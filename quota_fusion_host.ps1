@@ -1362,6 +1362,27 @@ function New-RoundedRectanglePath {
     return $path
 }
 
+function Set-ToolStripRoundedRegion {
+    param(
+        $Menu,
+        [int]$Radius = 14
+    )
+    if ($null -eq $Menu -or $Menu.IsDisposed -or $Menu.Width -le 0 -or $Menu.Height -le 0) {
+        return
+    }
+    $path = New-RoundedRectanglePath (New-Object System.Drawing.Rectangle(0, 0, $Menu.Width, $Menu.Height)) $Radius
+    try {
+        $oldRegion = $Menu.Region
+        $Menu.Region = New-Object System.Drawing.Region($path)
+        if ($null -ne $oldRegion) {
+            $oldRegion.Dispose()
+        }
+    }
+    finally {
+        $path.Dispose()
+    }
+}
+
 function Get-DockHandleRectangle {
     param(
         $Form,
@@ -1629,6 +1650,10 @@ function New-FloatContextMenu {
     $menu.ShowImageMargin = $false
     $menu.BackColor = [System.Drawing.Color]::FromArgb(36, 42, 52)
     $menu.ForeColor = [System.Drawing.Color]::FromArgb(239, 243, 249)
+    $menu.AutoSize = $true
+    $menu.Padding = New-Object System.Windows.Forms.Padding(12, 10, 12, 10)
+    $menu.MinimumSize = New-Object System.Drawing.Size(250, 0)
+    $menu.Font = New-HostFont 'Microsoft YaHei UI' 14
 
     $keepItem = New-Object System.Windows.Forms.ToolStripMenuItem('保持当前展开')
     $resumeItem = New-Object System.Windows.Forms.ToolStripMenuItem('恢复自动吸附')
@@ -1642,6 +1667,10 @@ function New-FloatContextMenu {
 
     $keepItem.Add_Click({
         if ($null -ne $Form -and -not $Form.IsDisposed) { Keep-WindowOpen $Form }
+    }.GetNewClosure())
+
+    $menu.Add_Opened({
+        Set-ToolStripRoundedRegion $menu 16
     }.GetNewClosure())
     $resumeItem.Add_Click({
         if ($null -ne $Form -and -not $Form.IsDisposed) { Resume-AutoDock $Form }
@@ -2022,8 +2051,23 @@ function Remove-CardFromFused {
     if ($null -eq $list) {
         return
     }
-    [void]$list.Remove($Card)
-    $remaining = @($list)
+    if ($list -isnot [System.Collections.ArrayList]) {
+        $normalized = New-Object System.Collections.ArrayList
+        foreach ($entry in @($list)) {
+            if ($null -ne $entry) {
+                [void]$normalized.Add($entry)
+            }
+        }
+        $list = $normalized
+        $script:FormCards[$Form] = $list
+    }
+    $index = $list.IndexOf($Card)
+    if ($index -lt 0) {
+        Write-Log $errorLog ('remove-card: provider not found in form list: ' + [string]$Card.Provider)
+        return
+    }
+    $list.RemoveAt($index)
+    $remaining = @($list.ToArray())
     if ($CloseCard -and $script:Cards.ContainsKey($Card.Provider)) {
         $script:Cards.Remove($Card.Provider)
     }
@@ -2031,6 +2075,7 @@ function Remove-CardFromFused {
     $Card.Fused = $false
 
     if ($remaining.Count -eq 0) {
+        Save-HostState
         $Form.Close()
         return
     }
@@ -2068,6 +2113,7 @@ function Remove-CardFromFused {
         $newForm.Show()
     }
     $Form.Invalidate()
+    Save-HostState
 }
 
 function Merge-Windows {

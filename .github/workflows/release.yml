@@ -51,4 +51,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $files = Get-ChildItem dist\*
-          gh release create $env:GITHUB_REF_NAME $files.FullName --title "QuotaDock $env:QUOTADOCK_VERSION" --generate-notes
+          gh release create $env:GITHUB_REF_NAME $files.FullName --title "QuotaDock $env:QUOTADOCK_VERSION · Windows 首发" --generate-notes

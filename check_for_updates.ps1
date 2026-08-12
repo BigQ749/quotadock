@@ -1,6 +1,7 @@
 param(
     [switch]$ShowDialog,
-    [switch]$SelfTest
+    [switch]$SelfTest,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,7 +55,7 @@ if ($null -eq $currentVersion) {
 
 $release = $null
 try {
-    if (Test-Path -LiteralPath $cachePath) {
+    if (-not $Force -and (Test-Path -LiteralPath $cachePath)) {
         $cached = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json
         $checkedAt = [datetimeoffset]::Parse([string]$cached.checkedAt)
         if (([datetimeoffset]::Now - $checkedAt).TotalHours -lt 24) {

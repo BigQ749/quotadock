@@ -1,4 +1,4 @@
-#define AppVersion "0.1.0"
+#define AppVersion "0.1.1"
 
 [Setup]
 AppId={{D6F2C99B-1D5E-4F3C-9C7A-000000000001}
@@ -11,6 +11,8 @@ AppComments=QuotaDock Windows desktop quota dashboard
 DefaultDirName={localappdata}\Programs\QuotaDock
 DefaultGroupName=QuotaDock
 DisableProgramGroupPage=yes
+DisableDirPage=no
+LicenseFile=..\LICENSE
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x86compatible x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -22,6 +24,9 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=QuotaDock
 Uninstallable=yes
+
+[Tasks]
+Name: "autostart"; Description: "登录 Windows 时自动启动 QuotaDock"; GroupDescription: "启动选项："; Flags: unchecked
 
 [Files]
 Source: "..\*.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -38,6 +43,7 @@ Source: "..\opencode-go-quota-bridge\*"; DestDir: "{app}\opencode-go-quota-bridg
 [Icons]
 Name: "{autoprograms}\QuotaDock"; Filename: "{app}\launch_quota_center.vbs"; WorkingDir: "{app}"; IconFilename: "{app}\assets\app\QuotaDock.ico"; Comment: "管理多个 AI 平台额度浮窗"
 Name: "{autodesktop}\QuotaDock"; Filename: "{app}\launch_quota_center.vbs"; WorkingDir: "{app}"; IconFilename: "{app}\assets\app\QuotaDock.ico"; Comment: "管理多个 AI 平台额度浮窗"
+Name: "{userstartup}\QuotaDock"; Filename: "{app}\launch_quota_center.vbs"; WorkingDir: "{app}"; IconFilename: "{app}\assets\app\QuotaDock.ico"; Comment: "登录 Windows 时启动 QuotaDock"; Tasks: autostart
 
 [Run]
 Filename: "wscript.exe"; Parameters: """{app}\launch_quota_center.vbs"""; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent

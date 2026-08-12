@@ -221,6 +221,7 @@ $script:HostStateAvailable = $false
 $script:HostStateUpdatedAt = $null
 $script:StateTimer = $null
 $script:PendingProviderActions = @{}
+$script:PendingProviderSince = @{}
 $script:UpdateCheckStarted = $false
 
 function Save-State {
@@ -363,6 +364,30 @@ function Start-QuotaDockUpdateCheck {
     }
 }
 
+function Invoke-QuotaDockUpdateCheck {
+    $updateScript = Join-Path $root 'check_for_updates.ps1'
+    if (-not (Test-Path -LiteralPath $updateScript)) {
+        Set-Status '更新模块不存在'
+        return
+    }
+    try {
+        Start-Process -FilePath $powershell -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @(
+            '-NoProfile'
+            '-ExecutionPolicy'
+            'Bypass'
+            '-File'
+            $updateScript
+            '-ShowDialog'
+            '-Force'
+        ) | Out-Null
+        Set-Status '正在检查 QuotaDock 更新…'
+    }
+    catch {
+        Write-CenterError 'manual-update-check' $_
+        Set-Status ('更新检查失败：' + $_.Exception.Message)
+    }
+}
+
 function Write-CenterError {
     param([string]$Context, $ErrorRecord)
     try {
@@ -449,14 +474,23 @@ function Sync-HostRuntimeState {
             }
         }
     }
+    $now = [datetime]::UtcNow
     foreach ($provider in $providers.Keys) {
         $isOpen = Test-ProviderActuallyOpen $provider
         $pending = if ($script:PendingProviderActions.ContainsKey($provider)) { [string]$script:PendingProviderActions[$provider] } else { '' }
+        $pendingSince = if ($script:PendingProviderSince.ContainsKey($provider)) { $script:PendingProviderSince[$provider] } else { $null }
+        $pendingAge = if ($pendingSince -is [datetime]) { ($now - $pendingSince.ToUniversalTime()).TotalSeconds } else { 0 }
         if ($isOpen -and $pending -eq 'opening') {
             $script:PendingProviderActions.Remove($provider)
+            $script:PendingProviderSince.Remove($provider)
         }
         elseif (-not $isOpen -and $pending -eq 'closing') {
             $script:PendingProviderActions.Remove($provider)
+            $script:PendingProviderSince.Remove($provider)
+        }
+        elseif ($pending -ne '' -and $pendingAge -ge 8) {
+            $script:PendingProviderActions.Remove($provider)
+            $script:PendingProviderSince.Remove($provider)
         }
         $displayOpen = if ($pending -eq 'opening') { $true } elseif ($pending -eq 'closing') { $false } else { $isOpen }
         if ($script:ProviderChecks.ContainsKey($provider)) {
@@ -501,12 +535,14 @@ function Apply-ProviderSelection {
                 $script:SelectedProviders = @($script:SelectedProviders + $Provider)
             }
             $script:PendingProviderActions[$Provider] = 'opening'
+            $script:PendingProviderSince[$Provider] = [datetime]::UtcNow
             Start-Provider $Provider
             Set-Status (($providers[$Provider].Title) + ' 正在打开浮窗')
         }
         else {
             $script:SelectedProviders = @($script:SelectedProviders | Where-Object { $_ -ne $Provider })
             $script:PendingProviderActions[$Provider] = 'closing'
+            $script:PendingProviderSince[$Provider] = [datetime]::UtcNow
             Write-HostRequest 'close' $Provider
             Set-Status (($providers[$Provider].Title) + ' 正在关闭浮窗')
         }
@@ -603,6 +639,27 @@ function Set-RoundedRegion {
     try {
         $oldRegion = $Control.Region
         $Control.Region = New-Object System.Drawing.Region($path)
+        if ($null -ne $oldRegion) {
+            $oldRegion.Dispose()
+        }
+    }
+    finally {
+        $path.Dispose()
+    }
+}
+
+function Set-ToolStripRoundedRegion {
+    param(
+        $Menu,
+        [int]$Radius = 14
+    )
+    if ($null -eq $Menu -or $Menu.IsDisposed -or $Menu.Width -le 0 -or $Menu.Height -le 0) {
+        return
+    }
+    $path = New-RoundedPath $Menu.Width $Menu.Height $Radius
+    try {
+        $oldRegion = $Menu.Region
+        $Menu.Region = New-Object System.Drawing.Region($path)
         if ($null -ne $oldRegion) {
             $oldRegion.Dispose()
         }
@@ -1040,12 +1097,13 @@ function New-ProviderContextMenu {
     $menu.ShowImageMargin = $false
     $menu.ShowCheckMargin = $false
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(8, 6, 8, 6)
-    $menu.Font = New-UiFont 'Microsoft YaHei UI' 12
+    $menu.Padding = New-Object System.Windows.Forms.Padding(12, 10, 12, 10)
+    $menu.MinimumSize = New-Object System.Drawing.Size(250, 0)
+    $menu.Font = New-UiFont 'Microsoft YaHei UI' 14
 
     $titleItem = New-Object System.Windows.Forms.ToolStripMenuItem($providers[$Provider].Title)
     $titleItem.Enabled = $false
-    $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 12 ([System.Drawing.FontStyle]::Bold)
+    $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 14 ([System.Drawing.FontStyle]::Bold)
     [void]$menu.Items.Add($titleItem)
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
@@ -1060,6 +1118,9 @@ function New-ProviderContextMenu {
     $removeItem = New-Object System.Windows.Forms.ToolStripMenuItem($removeText)
     $removeItem.Add_Click({ Remove-ProviderCard $Provider }.GetNewClosure())
     [void]$menu.Items.Add($removeItem)
+    $menu.Add_Opened({
+        Set-ToolStripRoundedRegion $menu 14
+    }.GetNewClosure())
     $menu.Add_Closed({
         $menu.Dispose()
     }.GetNewClosure())
@@ -1074,10 +1135,17 @@ function Show-ProviderMenu {
     if (-not $providers.ContainsKey($Provider) -or $null -eq $Source) {
         return
     }
-    $menu = New-ProviderContextMenu $Provider
-    $screen = [System.Windows.Forms.Cursor]::Position
-    $local = $Source.PointToClient($screen)
-    $menu.Show($Source, $local)
+    if ($Source.IsDisposed) {
+        return
+    }
+    try {
+        $menu = New-ProviderContextMenu $Provider
+        $menu.Show([System.Windows.Forms.Cursor]::Position)
+    }
+    catch {
+        Write-CenterError 'provider-context-menu' $_
+        Set-Status (($providers[$Provider].Title) + ' 菜单打开失败：' + $_.Exception.Message)
+    }
 }
 
 function Add-ProviderContextHandler {
@@ -1253,6 +1321,22 @@ $closeButton.Cursor = [System.Windows.Forms.Cursors]::Arrow
 $closeButton.Add_Click({ Hide-Center })
 $chrome.Controls.Add($closeButton)
 
+$updateButton = New-Object System.Windows.Forms.Button
+$updateButton.Text = '↻'
+$updateButton.Location = New-Object System.Drawing.Point(($uiWidth - 142), 30)
+$updateButton.Size = New-Object System.Drawing.Size(48, 48)
+$updateButton.Font = New-UiFont 'Segoe UI Symbol' 26
+$updateButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$updateButton.FlatAppearance.BorderSize = 0
+$updateButton.BackColor = $background
+$updateButton.ForeColor = $muted
+$updateButton.UseCompatibleTextRendering = $false
+$updateButton.Cursor = [System.Windows.Forms.Cursors]::Arrow
+$updateButton.Add_Click({ Invoke-QuotaDockUpdateCheck })
+$chrome.Controls.Add($updateButton)
+$updateTip = New-Object System.Windows.Forms.ToolTip
+$updateTip.SetToolTip($updateButton, '检查 QuotaDock 更新')
+
 $divider = New-Object System.Windows.Forms.Panel
 $divider.Location = New-Object System.Drawing.Point($uiMargin, 150)
 $divider.Size = New-Object System.Drawing.Size($cardWidth, 1)
@@ -1310,7 +1394,7 @@ foreach ($provider in $providers.Keys) {
     $descriptionLabel = Add-TextLabel $profile.Description (New-Object System.Drawing.Point(116, 70)) (New-Object System.Drawing.Size(390, 30)) (New-UiFont 'Microsoft YaHei UI' 18) $muted $card
     $statusText = Get-ProviderRuntimeCaption $provider
     $statusColor = if (Test-ProviderActuallyOpen $provider) { $accent } else { $subtle }
-    $statusLabel = Add-TextLabel $statusText (New-Object System.Drawing.Point(548, 76)) (New-Object System.Drawing.Size(100, 26)) (New-UiFont 'Microsoft YaHei UI' 16) $statusColor $card
+    $statusLabel = Add-TextLabel $statusText (New-Object System.Drawing.Point(514, 76)) (New-Object System.Drawing.Size(154, 26)) (New-UiFont 'Microsoft YaHei UI' 15) $statusColor $card
     $script:ProviderStatusLabels[$provider] = $statusLabel
 
     $toggle = New-ProviderToggle $provider $card (New-Object System.Drawing.Point(($cardWidth - 86), 48)) ([bool]$check.Checked)
@@ -1409,12 +1493,13 @@ $menu.ForeColor = $foreground
 $menu.ShowImageMargin = $false
 $menu.ShowCheckMargin = $true
 $menu.AutoSize = $true
-$menu.Padding = New-Object System.Windows.Forms.Padding(8, 6, 8, 6)
-$menu.Font = New-UiFont 'Microsoft YaHei UI' 12
+$menu.Padding = New-Object System.Windows.Forms.Padding(12, 10, 12, 10)
+$menu.MinimumSize = New-Object System.Drawing.Size(280, 0)
+$menu.Font = New-UiFont 'Microsoft YaHei UI' 14
 
 $menuTitle = New-Object System.Windows.Forms.ToolStripMenuItem('QuotaDock  ·  浮窗控制')
 $menuTitle.Enabled = $false
-$menuTitle.Font = New-UiFont 'Microsoft YaHei UI' 12 ([System.Drawing.FontStyle]::Bold)
+$menuTitle.Font = New-UiFont 'Microsoft YaHei UI' 14 ([System.Drawing.FontStyle]::Bold)
 [void]$menu.Items.Add($menuTitle)
 [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
@@ -1476,6 +1561,7 @@ $notify.ContextMenuStrip = $menu
 $notify.Visible = $true
 $notify.Add_DoubleClick({ Show-Center })
 $menu.Add_Opening({ Sync-HostRuntimeState; Sync-TrayItems })
+$menu.Add_Opened({ Set-ToolStripRoundedRegion $menu 16 }.GetNewClosure())
 
 $exitItem.Add_Click({ Exit-Center })
 

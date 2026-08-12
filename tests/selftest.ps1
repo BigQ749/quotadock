@@ -31,4 +31,19 @@ Invoke-QuotaDockSelfTest 'quota_center.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'quota_fusion_host.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
+
+$centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -Raw -Encoding UTF8
+$hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
+if ($centerSource -match 'ShowWithoutActivation') {
+    throw 'REGRESSION_FAIL: center must not assign unsupported ShowWithoutActivation'
+}
+if ($hostSource -match 'ShowWithoutActivation') {
+    throw 'REGRESSION_FAIL: host must not assign unsupported ShowWithoutActivation'
+}
+if ($hostSource -notmatch 'RemoveAt\(\$index\)') {
+    throw 'REGRESSION_FAIL: fused-card removal must use an explicit ArrayList index'
+}
+if ($hostSource -notmatch 'Save-HostState\s*\r?\n\s*\$Form\.Close\(\)') {
+    throw 'REGRESSION_FAIL: host state must be saved before closing the last card'
+}
 Write-Output 'QUOTADOCK_SELFTEST_PASS'
