@@ -40,4 +40,4 @@ Name: "{autoprograms}\QuotaDock"; Filename: "{app}\launch_quota_center.vbs"; Wor
 Name: "{autodesktop}\QuotaDock"; Filename: "{app}\launch_quota_center.vbs"; WorkingDir: "{app}"; IconFilename: "{app}\assets\app\QuotaDock.ico"; Comment: "管理多个 AI 平台额度浮窗"
 
 [Run]
-Filename: "wscript.exe"; Parameters: "\"{app}\launch_quota_center.vbs\""; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+Filename: "wscript.exe"; Parameters: """{app}\launch_quota_center.vbs"""; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
