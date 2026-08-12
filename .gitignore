@@ -1,0 +1,30 @@
+# Local runtime state and credentials
+*.log
+*.tmp
+opencode_go_live.json
+opencode_go_credentials.json
+quota_sources.json
+custom_providers.json
+host_state.json
+quota_center_state.json
+quota_center_hidden.json
+custom-data/
+QuotaDock/
+QuotaFusionDesktop/
+legacy/
+
+# Local captures and historical design iterations
+current-desktop-check.png
+desktop-right-bottom-reference.png
+speedball-reference-window.png
+runtime-*.png
+brand-logo-*.png
+readability-preview.png
+quota-dock-top-handle-test.png
+quota-floater-*.png
+quotadock-ui-*.png
+
+# Build output
+dist/
+output/
+*.zip

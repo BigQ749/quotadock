@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "OpenCode Go 额度本地同步",
+  "version": "0.1.0",
+  "description": "将已登录的 OpenCode Go Console 额度以只读数值同步到本机浮窗。",
+  "content_scripts": [
+    {
+      "matches": ["https://opencode.ai/workspace/*/go"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "https://opencode.ai/*",
+    "http://127.0.0.1:45731/*"
+  ]
+}

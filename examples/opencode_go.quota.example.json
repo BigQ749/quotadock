@@ -1,0 +1,27 @@
+{
+  "provider": "opencode",
+  "isLive": false,
+  "source": "example_fixture",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "note": "这是公开示例数据，不代表任何账号的真实额度。",
+  "windows": [
+    {
+      "kind": "five_hour",
+      "title": "5 小时额度",
+      "remainingPercent": 91,
+      "resetText": "示例：约 4 小时后重置"
+    },
+    {
+      "kind": "week",
+      "title": "周额度",
+      "remainingPercent": 78,
+      "resetText": "示例：1月3日 12:00"
+    },
+    {
+      "kind": "month",
+      "title": "月额度",
+      "remainingPercent": 96,
+      "resetText": "示例：2月1日 00:00"
+    }
+  ]
+}

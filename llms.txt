@@ -1,0 +1,35 @@
+# QuotaDock AI-readable project index
+
+QuotaDock is a Windows PowerShell + WinForms desktop quota dashboard. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, and custom providers.
+
+## Core facts
+
+- `quota_center.ps1`: provider selection, add/remove custom provider, tray UI, update-check launch.
+- `quota_fusion_host.ps1`: the single real host window; independent cards and fused cards share one process/window model.
+- `launch_quota_small_widget.ps1`: provider launch and optional sync-process start.
+- `opencode_go_background_sync.ps1`: optional direct fetch of the official OpenCode Go console after user-configured current-user DPAPI credential storage.
+- `opencode_go_browser_bridge.ps1`: localhost bridge for the Chrome extension.
+- `opencode-go-quota-bridge/`: read-only page parser for the official OpenCode Go workspace page.
+- `packaging/QuotaDock.iss`: per-user Inno Setup installer.
+- `.github/workflows/release.yml`: tag-based Windows installer build and GitHub Release publication.
+
+## Data and security boundary
+
+The UI reads local JSON snapshots. Never commit Cookie, session tokens, API keys, passwords, real account quota snapshots, logs, or personal absolute paths. Runtime state and encrypted credentials live under `%LOCALAPPDATA%\QuotaDock`.
+
+## Extension points
+
+Add a provider by registering a local JSON source in `quota_sources.json` or through QuotaDock's custom-provider UI. A provider adapter should write 0–100 remaining percentages, reset text, and an ISO `updatedAt`. It must fail closed and never turn a parser error into 0%.
+
+## Release/update behavior
+
+`VERSION` is the source of truth. A matching `vX.Y.Z` tag triggers the Windows installer workflow. The client checks GitHub Releases at most once per 24 hours and shows a user-choice dialog; it does not silently install or upload local data.
+
+## Read next
+
+- `README.md`
+- `docs/architecture.md`
+- `docs/provider-adapter.md`
+- `docs/troubleshooting.md`
+- `docs/release.md`
+- `SECURITY.md`

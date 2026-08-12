@@ -1,0 +1,54 @@
+name: Build and publish QuotaDock
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read and validate version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid VERSION: $version" }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw "Tag does not match VERSION" }
+          "QUOTADOCK_VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress --yes
+
+      - name: Build installer
+        shell: pwsh
+        run: .\packaging\build.ps1 -Clean
+
+      - name: Create checksum
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist\QuotaDock-Setup-*.exe | Select-Object -First 1
+          (Get-FileHash $installer.FullName -Algorithm SHA256).Hash + "  " + $installer.Name | Set-Content dist\SHA256SUMS.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuotaDock-${{ env.QUOTADOCK_VERSION }}
+          path: dist/*
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem dist\*
+          gh release create $env:GITHUB_REF_NAME $files.FullName --title "QuotaDock $env:QUOTADOCK_VERSION" --generate-notes

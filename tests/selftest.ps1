@@ -1,0 +1,34 @@
+$ErrorActionPreference = 'Stop'
+$root = Split-Path -Parent $PSScriptRoot
+$powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+
+$privacyPatterns = @(
+    'Fe26\.[A-Za-z0-9._-]{20,}',
+    'ghp_[A-Za-z0-9]{20,}',
+    'github_pat_[A-Za-z0-9_]{20,}',
+    'sk-[A-Za-z0-9]{20,}',
+    'Bearer\s+[A-Za-z0-9._-]{20,}'
+)
+$scanFiles = Get-ChildItem -LiteralPath $root -Recurse -File |
+    Where-Object { $_.FullName -notmatch '\\.git\\' -and $_.Extension -notin @('.png', '.ico') }
+foreach ($pattern in $privacyPatterns) {
+    $matches = Select-String -Path $scanFiles.FullName -Pattern $pattern -AllMatches -ErrorAction SilentlyContinue
+    if ($matches) {
+        throw ('PRIVACY_SCAN_FAIL pattern=' + $pattern + ' file=' + $matches[0].Path)
+    }
+}
+
+function Invoke-QuotaDockSelfTest {
+    param([string]$Script, [string[]]$Arguments)
+    $output = & $powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root $Script) @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw ($Script + ' self-test failed:`n' + ($output -join "`n"))
+    }
+    $output
+}
+
+Invoke-QuotaDockSelfTest 'quota_center.ps1' @('-SelfTest')
+Invoke-QuotaDockSelfTest 'quota_fusion_host.ps1' @('-SelfTest')
+Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
+Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
+Write-Output 'QUOTADOCK_SELFTEST_PASS'

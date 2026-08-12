@@ -1,0 +1,8 @@
+{
+  "codexPath": "%USERPROFILE%\\AppData\\Local\\QuotaDock\\data\\codex.json",
+  "grokPath": "%USERPROFILE%\\AppData\\Local\\QuotaDock\\data\\grok.json",
+  "opencodePath": "%USERPROFILE%\\AppData\\Local\\QuotaDock\\data\\opencode_go.json",
+  "codexSyncScript": "",
+  "grokSyncScript": "",
+  "pythonwPath": ""
+}

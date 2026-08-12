@@ -1,0 +1,13 @@
+{
+  "title": "Claude Code",
+  "badge": "自定义",
+  "status": "同步 12:00",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "windows": [
+    {
+      "label": "周额度",
+      "remainingPercent": 75,
+      "resetText": "8月15日 12:00"
+    }
+  ]
+}
