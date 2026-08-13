@@ -61,6 +61,8 @@ $script:BrandRenderScales = @{
     opencode = 1.10
 }
 $script:BrandImages = @{}
+$script:LastHostStateWriteAt = [datetime]::MinValue
+$script:CustomProvidersLastWriteUtc = $null
 
 function Write-Log {
     param([string]$Path, [string]$Message)
@@ -72,7 +74,14 @@ function Write-Log {
 }
 
 function Save-HostState {
+    param([switch]$Force)
     try {
+        $now = [datetime]::UtcNow
+        if (-not $Force -and
+            $script:LastHostStateWriteAt -ne [datetime]::MinValue -and
+            ($now - $script:LastHostStateWriteAt).TotalMilliseconds -lt 1000) {
+            return
+        }
         $items = New-Object System.Collections.ArrayList
         foreach ($provider in @($script:Cards.Keys)) {
             $card = $script:Cards[$provider]
@@ -101,11 +110,12 @@ function Save-HostState {
         $payload = [ordered]@{
             version   = 1
             hostPid   = [int]$PID
-            updatedAt = (Get-Date).ToString('o')
+            updatedAt = $now.ToLocalTime().ToString('o')
             providers = @($items.ToArray())
         }
         $json = $payload | ConvertTo-Json -Depth 8
         [System.IO.File]::WriteAllText($hostStateFile, $json, (New-Object System.Text.UTF8Encoding($false)))
+        $script:LastHostStateWriteAt = $now
     }
     catch {
         Write-Log $errorLog ('host-state: ' + ($_ | Out-String))
@@ -263,9 +273,14 @@ function Get-JsonValue {
 
 function Import-CustomProviders {
     if (-not (Test-Path -LiteralPath $customConfigPath)) {
+        $script:CustomProvidersLastWriteUtc = $null
         return
     }
     try {
+        $lastWriteUtc = (Get-Item -LiteralPath $customConfigPath -ErrorAction Stop).LastWriteTimeUtc
+        if ($null -ne $script:CustomProvidersLastWriteUtc -and $lastWriteUtc -eq $script:CustomProvidersLastWriteUtc) {
+            return
+        }
         $config = Get-Content -LiteralPath $customConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
         foreach ($entry in @($config.providers)) {
             $id = ([string](Get-JsonValue $entry 'id')).Trim().ToLowerInvariant()
@@ -305,6 +320,7 @@ function Import-CustomProviders {
                 $script:BrandRenderScales[$id] = 1.0
             }
         }
+        $script:CustomProvidersLastWriteUtc = $lastWriteUtc
     }
     catch {
         Write-Log $errorLog ('custom provider config: ' + ($_ | Out-String))

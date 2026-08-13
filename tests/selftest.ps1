@@ -81,6 +81,18 @@ if ($centerSource -match '\$providers\.ContainsKey') {
 if ($centerSource -notmatch '\$script:UpdateResultPath' -or $centerSource -notmatch 'Sync-UpdateCheckState') {
     throw 'REGRESSION_FAIL: manual update check must return and display a result'
 }
+if ($centerSource -notmatch '\$script:UpdateResultConsumed' -or $centerSource -notmatch 'Consume the result before showing') {
+    throw 'REGRESSION_FAIL: update results must be consumed before showing a modal result'
+}
+if ($centerSource -match '\$menu\.Add_Closed\s*\(\{\s*\$menu\.Dispose') {
+    throw 'REGRESSION_FAIL: provider menus must not dispose themselves during Closed'
+}
+if ($centerSource -notmatch 'Get-Process -Id \$hostPid' -or $centerSource -match 'Get-CimInstance Win32_Process -Filter') {
+    throw 'REGRESSION_FAIL: runtime polling must avoid WMI command-line inspection on the UI timer'
+}
+if ($hostSource -notmatch '\$script:LastHostStateWriteAt' -or $hostSource -notmatch '\$script:CustomProvidersLastWriteUtc') {
+    throw 'REGRESSION_FAIL: host polling must throttle state writes and cache custom-provider imports'
+}
 if ($centerSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $centerSource -notmatch "New-UiFont 'Microsoft YaHei UI' 16") {
     throw 'REGRESSION_FAIL: center context menus must use the enlarged menu scale'
 }

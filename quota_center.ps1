@@ -249,6 +249,7 @@ $script:PendingProviderSince = @{}
 $script:UpdateCheckStarted = $false
 $script:UpdateCheckProcess = $null
 $script:UpdateCheckInProgress = $false
+$script:UpdateResultConsumed = $false
 $script:UpdateResultPath = Join-Path $env:TEMP ('quotadock-update-result-' + $PID + '.json')
 
 function Save-State {
@@ -410,6 +411,7 @@ function Invoke-QuotaDockUpdateCheck {
         if (Test-Path -LiteralPath $script:UpdateResultPath) {
             Remove-Item -LiteralPath $script:UpdateResultPath -Force -ErrorAction SilentlyContinue
         }
+        $script:UpdateResultConsumed = $false
         $script:UpdateCheckProcess = Start-Process -FilePath $powershell -WindowStyle Hidden -WorkingDirectory $root -PassThru -ArgumentList @(
             '-NoProfile'
             '-ExecutionPolicy'
@@ -450,8 +452,12 @@ function Read-HostRuntimeState {
         if ($hostPid -le 0) {
             return $null
         }
-        $process = Get-CimInstance Win32_Process -Filter ('ProcessId = ' + $hostPid) -ErrorAction SilentlyContinue
-        if ($null -eq $process -or [string]$process.CommandLine -notmatch 'quota_fusion_host\.ps1') {
+        # This runs on the WinForms UI timer. WMI command-line inspection here
+        # made dragging the center and its menus visibly stutter. The state
+        # file is written by the host and already carries its PID; a cheap
+        # process existence/type check is sufficient for this local handshake.
+        $process = Get-Process -Id $hostPid -ErrorAction SilentlyContinue
+        if ($null -eq $process -or $process.ProcessName -notin @('pwsh', 'powershell')) {
             return $null
         }
         $updatedAt = [string](Get-JsonValue $state 'updatedAt')
@@ -569,7 +575,11 @@ function Show-UpdateResult {
         return $false
     }
     try {
-        $result = Get-Content -LiteralPath $script:UpdateResultPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $raw = Get-Content -LiteralPath $script:UpdateResultPath -Raw -Encoding UTF8
+        $result = $raw | ConvertFrom-Json
+        # Consume the result before showing a modal dialog. If the dialog or
+        # cleanup throws, the state timer must not show the same failure again.
+        Remove-Item -LiteralPath $script:UpdateResultPath -Force -ErrorAction Stop
         $current = [string](Get-JsonValue $result 'currentVersion')
         $latest = [string](Get-JsonValue $result 'latestVersion')
         $hasUpdate = [bool](Get-JsonValue $result 'hasUpdate')
@@ -597,7 +607,6 @@ function Show-UpdateResult {
             Start-Process $releaseUrl
         }
         Set-Status '更新检查已完成'
-        Remove-Item -LiteralPath $script:UpdateResultPath -Force -ErrorAction SilentlyContinue
         return $true
     }
     catch {
@@ -609,9 +618,18 @@ function Show-UpdateResult {
 
 function Sync-UpdateCheckState {
     if (-not $script:UpdateCheckInProgress) { return }
-    if (Show-UpdateResult) {
+    if ($script:UpdateResultConsumed) { return }
+    if (Test-Path -LiteralPath $script:UpdateResultPath) {
+        # Mark this result as consumed before entering the modal UI. This is a
+        # one-shot handoff even if parsing, deletion, or MessageBox.Show fails.
+        $script:UpdateResultConsumed = $true
         $script:UpdateCheckInProgress = $false
+        $finishedProcess = $script:UpdateCheckProcess
         $script:UpdateCheckProcess = $null
+        if ($null -ne $finishedProcess) {
+            try { $finishedProcess.Dispose() } catch {}
+        }
+        [void](Show-UpdateResult)
         return
     }
     if ($null -ne $script:UpdateCheckProcess) {
@@ -1246,9 +1264,9 @@ function New-ProviderContextMenu {
     $menu.Add_Opened({
         Set-ToolStripRoundedRegion $menu 14
     }.GetNewClosure())
-    $menu.Add_Closed({
-        $menu.Dispose()
-    }.GetNewClosure())
+    # Do not dispose this transient menu from Closed. ContextMenuStrip can
+    # raise Closed while Show is still completing, which disposes the object
+    # before WinForms finishes the Show call and breaks every right-click.
     return ,$menu
 }
 
