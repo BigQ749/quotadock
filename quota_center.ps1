@@ -379,6 +379,7 @@ function Invoke-QuotaDockUpdateCheck {
             $updateScript
             '-ShowDialog'
             '-Force'
+            '-Interactive'
         ) | Out-Null
         Set-Status '正在检查 QuotaDock 更新…'
     }
@@ -1322,18 +1323,21 @@ $closeButton.Add_Click({ Hide-Center })
 $chrome.Controls.Add($closeButton)
 
 $updateButton = New-Object System.Windows.Forms.Button
-$updateButton.Text = '↻'
-$updateButton.Location = New-Object System.Drawing.Point(($uiWidth - 142), 30)
-$updateButton.Size = New-Object System.Drawing.Size(48, 48)
-$updateButton.Font = New-UiFont 'Segoe UI Symbol' 26
+$updateButton.Text = '↑  检查更新'
+$updateButton.Location = New-Object System.Drawing.Point(($uiWidth - 254), 34)
+$updateButton.Size = New-Object System.Drawing.Size(150, 42)
+$updateButton.Font = New-UiFont 'Microsoft YaHei UI' 14 ([System.Drawing.FontStyle]::Bold)
 $updateButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$updateButton.FlatAppearance.BorderSize = 0
-$updateButton.BackColor = $background
-$updateButton.ForeColor = $muted
+$updateButton.FlatAppearance.BorderSize = 1
+$updateButton.FlatAppearance.BorderColor = $border
+$updateButton.FlatAppearance.MouseOverBackColor = $surfaceHover
+$updateButton.BackColor = $surface
+$updateButton.ForeColor = $foreground
 $updateButton.UseCompatibleTextRendering = $false
 $updateButton.Cursor = [System.Windows.Forms.Cursors]::Arrow
 $updateButton.Add_Click({ Invoke-QuotaDockUpdateCheck })
 $chrome.Controls.Add($updateButton)
+Set-RoundedRegion $updateButton 12
 $updateTip = New-Object System.Windows.Forms.ToolTip
 $updateTip.SetToolTip($updateButton, '检查 QuotaDock 更新')
 

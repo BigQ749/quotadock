@@ -1651,27 +1651,34 @@ function New-FloatContextMenu {
     $menu.BackColor = [System.Drawing.Color]::FromArgb(36, 42, 52)
     $menu.ForeColor = [System.Drawing.Color]::FromArgb(239, 243, 249)
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(12, 10, 12, 10)
-    $menu.MinimumSize = New-Object System.Drawing.Size(250, 0)
-    $menu.Font = New-HostFont 'Microsoft YaHei UI' 14
+    $menu.Padding = New-Object System.Windows.Forms.Padding(14, 12, 14, 12)
+    $menu.MinimumSize = New-Object System.Drawing.Size(320, 0)
+    $menu.Font = New-HostFont 'Microsoft YaHei UI' 16
+    $menu.Margin = New-Object System.Windows.Forms.Padding(6, 6, 6, 6)
+    $renderer = New-Object System.Windows.Forms.ToolStripProfessionalRenderer
+    $renderer.RoundedEdges = $true
+    $menu.Renderer = $renderer
 
     $keepItem = New-Object System.Windows.Forms.ToolStripMenuItem('保持当前展开')
     $resumeItem = New-Object System.Windows.Forms.ToolStripMenuItem('恢复自动吸附')
     $minimizeItem = New-Object System.Windows.Forms.ToolStripMenuItem('最小化 / 还原')
     $closeItem = New-Object System.Windows.Forms.ToolStripMenuItem('关闭此额度浮窗')
+    $closeCardMenu = New-Object System.Windows.Forms.ToolStripMenuItem('关闭其中一张额度卡片')
+    foreach ($item in @($keepItem, $resumeItem, $minimizeItem, $closeItem, $closeCardMenu)) {
+        $item.Font = $menu.Font
+        $item.Padding = New-Object System.Windows.Forms.Padding(12, 9, 12, 9)
+    }
     [void]$menu.Items.Add($keepItem)
     [void]$menu.Items.Add($resumeItem)
     [void]$menu.Items.Add($minimizeItem)
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+    [void]$menu.Items.Add($closeCardMenu)
     [void]$menu.Items.Add($closeItem)
 
     $keepItem.Add_Click({
         if ($null -ne $Form -and -not $Form.IsDisposed) { Keep-WindowOpen $Form }
     }.GetNewClosure())
 
-    $menu.Add_Opened({
-        Set-ToolStripRoundedRegion $menu 16
-    }.GetNewClosure())
     $resumeItem.Add_Click({
         if ($null -ne $Form -and -not $Form.IsDisposed) { Resume-AutoDock $Form }
     }.GetNewClosure())
@@ -1689,6 +1696,35 @@ function New-FloatContextMenu {
             $e.Cancel = $true
             return
         }
+        foreach ($oldItem in @($closeCardMenu.DropDownItems)) {
+            if ($null -ne $oldItem) {
+                $oldItem.Dispose()
+            }
+        }
+        $closeCardMenu.DropDownItems.Clear()
+        $cards = @($script:FormCards[$owner])
+        $isFused = $cards.Count -gt 1
+        $closeCardMenu.Visible = $isFused
+        $closeItem.Visible = -not $isFused
+        if ($isFused) {
+            foreach ($card in $cards) {
+                if ($null -eq $card) {
+                    continue
+                }
+                $targetForm = $owner
+                $targetCard = $card
+                $cardTitle = [string]$targetCard.Profile.Title
+                $cardItem = New-Object System.Windows.Forms.ToolStripMenuItem(('关闭 ' + $cardTitle + ' 额度'))
+                $cardItem.Font = $menu.Font
+                $cardItem.Padding = New-Object System.Windows.Forms.Padding(12, 9, 12, 9)
+                $cardItem.Add_Click({
+                    if ($null -ne $targetForm -and -not $targetForm.IsDisposed -and $null -ne $targetCard) {
+                        Remove-CardFromFused $targetForm $targetCard $true
+                    }
+                }.GetNewClosure())
+                [void]$closeCardMenu.DropDownItems.Add($cardItem)
+            }
+        }
         $state = $script:DockState[$owner]
         if ($null -ne $state) {
             $state.ContextMenuOpen = $true
@@ -1701,6 +1737,15 @@ function New-FloatContextMenu {
         $keepItem.Enabled = $null -ne $state -and -not $state.HoldOpen
         $resumeItem.Enabled = $null -ne $state -and $state.HoldOpen
         $minimizeItem.Text = if ($script:Minimized[$owner]) { '还原浮窗' } else { '最小化浮窗' }
+    }.GetNewClosure())
+
+    $menu.Add_Opened({
+        try {
+            Set-ToolStripRoundedRegion $menu 16
+        }
+        catch {
+            Write-Log $errorLog ('float-menu-region: ' + ($_ | Out-String))
+        }
     }.GetNewClosure())
 
     $menu.Add_Closing({
@@ -2061,6 +2106,7 @@ function Remove-CardFromFused {
         $list = $normalized
         $script:FormCards[$Form] = $list
     }
+    $wasFusedGroup = @($list.ToArray()).Count -gt 1
     $index = $list.IndexOf($Card)
     if ($index -lt 0) {
         Write-Log $errorLog ('remove-card: provider not found in form list: ' + [string]$Card.Provider)
@@ -2077,6 +2123,28 @@ function Remove-CardFromFused {
     if ($remaining.Count -eq 0) {
         Save-HostState
         $Form.Close()
+        return
+    }
+
+    if ($remaining.Count -eq 1 -and $wasFusedGroup -and $CloseCard) {
+        # A fused host must not be reused as the last single-card window. The
+        # old host has fused layout/dock state and closing it later could
+        # remove the remaining card as well. Hand the last card to a fresh
+        # single-card host before closing the old merged host.
+        $last = $remaining[0]
+        $last.Window = $null
+        $last.Fused = $false
+        $newCards = New-Object System.Collections.ArrayList
+        [void]$newCards.Add($last)
+        $desired = New-Object System.Drawing.Point(($Form.Left + 24), ($Form.Top + 24))
+        $loc = Get-DetachedLocation $last $desired
+        $newForm = New-FloatWindow $newCards $loc
+        $last.Window = $newForm
+        $last.Fused = $false
+        $newForm.Show()
+        $script:ClosingForms[$Form] = $true
+        $Form.Close()
+        Save-HostState
         return
     }
 

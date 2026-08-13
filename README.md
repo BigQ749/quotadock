@@ -22,7 +22,7 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 | 🖱️ | 真实拖拽与拆分 | 融合窗口可整体拖动；把某张卡片拖出窗口，才会拆成独立浮窗。 |
 | 🔄 | 运行状态同步 | 管理中心显示已打开、已吸附、已最小化和未打开，并从宿主状态实时校正。 |
 | 🛡️ | 本地优先 | UI 只读本地 JSON；仓库不包含 Cookie、凭据、真实额度快照或个人路径。 |
-| ⬆️ | 用户控制更新 | 启动时检查 GitHub Release；标题栏的 `↻` 可手动检查，发现新版本后由用户决定是否下载。 |
+| ⬆️ | 用户控制更新 | 启动时检查 GitHub Release；标题栏的 `↑ 检查更新` 可查看当前版本并手动检查，发现新版本后由用户决定是否下载。 |
 
 ## 下载与系统支持
 
@@ -42,7 +42,7 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 - 在一个 QuotaDock 管理中心中选择 Codex、Grok、OpenCode Go 或自定义平台。
 - Codex/Grok 可显示周额度；OpenCode Go 可显示 5 小时、周、月窗口；自定义平台最多 3 个窗口。
 - 单独浮窗支持移动、最小化、关闭和左/右/上藏边。
-- 多个卡片拖近后合成一个宿主窗口；管理中心关闭其中一个时只移除对应卡片，不会误关整组。
+- 多个卡片拖近后合成一个宿主窗口；管理中心或浮窗右键都可以按平台关闭，关闭到最后一张时会留下独立卡片，不会误关整组。
 - 高 DPI 感知绘制，统一官方品牌标识，清晰的百分比与同步时间。
 - OpenCode Go 支持 Chrome 页面桥接；也可以一次配置后用后台同步脚本按约 60 秒更新。
 - 通过管理中心添加其他平台：平台名称、英文标识、本地 JSON 路径和可选品牌图标都可自定义。
@@ -110,7 +110,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_back
 QuotaDock 的更新分成三步：
 
 1. 启动时检查 GitHub Releases，默认 24 小时内不重复请求。
-2. 管理中心标题栏的 `↻` 可立即检查一次，绕过本地检查缓存。
+2. 管理中心标题栏的 `↑ 检查更新` 可查看当前版本并立即检查一次，绕过本地检查缓存。
 3. 发现更高版本后弹出下载提示；用户点击“打开下载页”后自行下载安装，不会静默覆盖，也不会上传本地额度数据。
 
 维护者只需修改 `VERSION`、提交匹配的 `vX.Y.Z` tag，工作流就会构建安装器、生成 SHA-256 文件并发布 Release。详细步骤见 [`docs/release.md`](docs/release.md)。

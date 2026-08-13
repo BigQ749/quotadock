@@ -46,4 +46,19 @@ if ($hostSource -notmatch 'RemoveAt\(\$index\)') {
 if ($hostSource -notmatch 'Save-HostState\s*\r?\n\s*\$Form\.Close\(\)') {
     throw 'REGRESSION_FAIL: host state must be saved before closing the last card'
 }
+if ($hostSource -notmatch '\$closeCardMenu') {
+    throw 'REGRESSION_FAIL: fused floaters must expose per-card close actions'
+}
+if ($hostSource -notmatch '\$wasFusedGroup') {
+    throw 'REGRESSION_FAIL: fused-card removal must distinguish a merged host from a single host'
+}
+if ($hostSource -notmatch '\$remaining\.Count -eq 1 -and \$wasFusedGroup -and \$CloseCard') {
+    throw 'REGRESSION_FAIL: final remaining card must be converted out of a merged host'
+}
+if ($hostSource -notmatch '\$script:ClosingForms\[\$Form\] = \$true') {
+    throw 'REGRESSION_FAIL: merged-host conversion must protect the remaining card during FormClosed'
+}
+if ($centerSource -notmatch '\$updateButton\.Text' -or $centerSource -notmatch "'-Interactive'") {
+    throw 'REGRESSION_FAIL: manual update check must be an explicit interactive action'
+}
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

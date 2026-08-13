@@ -27,4 +27,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 
 ## 更新弹窗没有出现
 
-更新检查每 24 小时一次；当前版本没有高于 `VERSION` 的 GitHub Release 时不会弹窗。网络失败会静默跳过。调试时可删除 `%LOCALAPPDATA%\QuotaDock\update_check.json`，或设置 `QUOTADOCK_DISABLE_UPDATE_CHECK=1` 暂时关闭。
+启动时更新检查每 24 小时一次；当前版本没有高于 `VERSION` 的 GitHub Release 时不会自动弹窗。点击管理中心的 `↑ 检查更新` 会显示当前版本，并立即检查 GitHub Release；网络失败会显示可重试提示。调试时可删除 `%LOCALAPPDATA%\QuotaDock\update_check.json`，或设置 `QUOTADOCK_DISABLE_UPDATE_CHECK=1` 暂时关闭。
