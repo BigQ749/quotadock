@@ -321,6 +321,33 @@ function Get-JsonValue {
     return $property.Value
 }
 
+function Convert-ToDateTimeOffset {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+    if ($Value -is [datetimeoffset]) {
+        return [datetimeoffset]$Value
+    }
+    if ($Value -is [datetime]) {
+        # ConvertFrom-Json returns ISO values ending in Z as DateTime/UTC.
+        # Constructing DateTimeOffset from the typed value preserves Kind;
+        # converting through [string] would silently turn UTC into local time.
+        return [datetimeoffset]::new([datetime]$Value)
+    }
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+    try {
+        return [datetimeoffset]::Parse($text)
+    }
+    catch {
+        return $null
+    }
+}
+
 function Import-CustomProviders {
     if (-not (Test-Path -LiteralPath $customConfigPath)) {
         $script:CustomProvidersLastWriteUtc = $null
@@ -416,11 +443,11 @@ function Format-Percent {
 
 function Format-ResetText {
     param($ResetAt)
-    if ([string]::IsNullOrWhiteSpace([string]$ResetAt)) {
-        return '重置时间未知'
-    }
     try {
-        $reset = [datetimeoffset]::Parse([string]$ResetAt)
+        $reset = Convert-ToDateTimeOffset $ResetAt
+        if ($null -eq $reset) {
+            return '重置时间未知'
+        }
         $left = $reset - [datetimeoffset]::Now
         $local = $reset.LocalDateTime
         if ($left.TotalSeconds -le 0) {
@@ -438,11 +465,12 @@ function Format-ResetText {
 
 function Format-UpdatedText {
     param($UpdatedAt)
-    if ([string]::IsNullOrWhiteSpace([string]$UpdatedAt)) {
-        return '等待同步'
-    }
     try {
-        return '已同步 ' + ([datetimeoffset]::Parse([string]$UpdatedAt).LocalDateTime.ToString('HH:mm:ss'))
+        $updated = Convert-ToDateTimeOffset $UpdatedAt
+        if ($null -eq $updated) {
+            return '等待同步'
+        }
+        return '已同步 ' + $updated.ToLocalTime().ToString('HH:mm:ss')
     }
     catch {
         return '已同步 ' + [string]$UpdatedAt
@@ -452,22 +480,22 @@ function Format-UpdatedText {
 function Format-OpenCodeResetText {
     param($Window)
 
-    $resetAt = [string](Get-JsonValue $Window 'resetAt')
+    $resetAt = Convert-ToDateTimeOffset (Get-JsonValue $Window 'resetAt')
     $resetInSecValue = Get-JsonValue $Window 'resetInSec'
-    if ([string]::IsNullOrWhiteSpace($resetAt) -and $null -ne $resetInSecValue) {
+    if ($null -eq $resetAt -and $null -ne $resetInSecValue) {
         try {
             $resetInSec = [double]$resetInSecValue
             if (-not [double]::IsNaN($resetInSec) -and -not [double]::IsInfinity($resetInSec) -and $resetInSec -ge 0) {
-                $resetAt = [datetimeoffset]::UtcNow.AddSeconds($resetInSec).ToString('o')
+                $resetAt = [datetimeoffset]::Now.AddSeconds($resetInSec)
             }
         }
         catch {
         }
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($resetAt)) {
+    if ($null -ne $resetAt) {
         try {
-            $leftSeconds = [int][Math]::Ceiling(([datetimeoffset]::Parse($resetAt) - [datetimeoffset]::Now).TotalSeconds)
+            $leftSeconds = [int][Math]::Ceiling(($resetAt - [datetimeoffset]::Now).TotalSeconds)
             if ($leftSeconds -le 0) {
                 return '正在重置'
             }
@@ -500,11 +528,12 @@ function Format-OpenCodeResetText {
 
 function Get-SyncAgeMinutes {
     param($UpdatedAt)
-    if ([string]::IsNullOrWhiteSpace([string]$UpdatedAt)) {
-        return $null
-    }
     try {
-        return [Math]::Max(0, ([datetimeoffset]::Now - [datetimeoffset]::Parse([string]$UpdatedAt)).TotalMinutes)
+        $updated = Convert-ToDateTimeOffset $UpdatedAt
+        if ($null -eq $updated) {
+            return $null
+        }
+        return [Math]::Max(0, ([datetimeoffset]::Now - $updated).TotalMinutes)
     }
     catch {
         return $null
@@ -516,9 +545,9 @@ function Get-SyncStatusText {
         $Data,
         [string]$DefaultPrefix = '已同步'
     )
-    $updatedAt = [string](Get-JsonValue $Data 'updatedAt')
-    if ([string]::IsNullOrWhiteSpace($updatedAt)) {
-        $updatedAt = [string](Get-JsonValue $Data 'synced_at')
+    $updatedAt = Get-JsonValue $Data 'updatedAt'
+    if ($null -eq $updatedAt -or [string]::IsNullOrWhiteSpace([string]$updatedAt)) {
+        $updatedAt = Get-JsonValue $Data 'synced_at'
     }
     $text = if ([string]::IsNullOrWhiteSpace($updatedAt)) {
         '等待同步'
@@ -588,7 +617,7 @@ function Get-UiModel {
             # registered, but its adapter has not written a quota payload yet.
             [void]$rows.Add((New-Row '额度' '--' '等待同步'))
         }
-        $updatedAt = [string](Get-JsonValue $data 'updatedAt')
+        $updatedAt = Get-JsonValue $data 'updatedAt'
         $status = [string](Get-JsonValue $data 'status')
         if ([string]::IsNullOrWhiteSpace($status)) {
             $status = Format-UpdatedText $updatedAt
@@ -611,9 +640,9 @@ function Get-UiModel {
         $source = Get-JsonValue $data 'source'
         $remaining = Get-JsonValue $weekly 'remainingPercent'
         $resetAt = Get-JsonValue $weekly 'resetAt'
-        $updatedAt = [string](Get-JsonValue $source 'lastSuccessAt')
+        $updatedAt = Get-JsonValue $source 'lastSuccessAt'
         if ([string]::IsNullOrWhiteSpace($updatedAt)) {
-            $updatedAt = [string](Get-JsonValue $source 'updatedAt')
+            $updatedAt = Get-JsonValue $source 'updatedAt'
         }
         $age = Get-SyncAgeMinutes $updatedAt
         $syncStatus = [string](Get-JsonValue $source 'syncStatus')
@@ -640,12 +669,12 @@ function Get-UiModel {
         $resetText = Get-JsonValue $data 'reset_txt'
         $syncText = Get-JsonValue $data 'synced_at'
         $errorText = Get-JsonValue $data 'err'
-        $updatedAt = [string](Get-JsonValue $data 'last_success_at')
+        $updatedAt = Get-JsonValue $data 'last_success_at'
         if ([string]::IsNullOrWhiteSpace($updatedAt)) {
-            $updatedAt = [string](Get-JsonValue $data 'lastSuccessAt')
+            $updatedAt = Get-JsonValue $data 'lastSuccessAt'
         }
         if ([string]::IsNullOrWhiteSpace($updatedAt) -and [string]::IsNullOrWhiteSpace([string]$errorText)) {
-            $updatedAt = [string](Get-JsonValue $data 'updatedAt')
+            $updatedAt = Get-JsonValue $data 'updatedAt'
         }
         if ([string]::IsNullOrWhiteSpace($updatedAt) -and [string]::IsNullOrWhiteSpace([string]$errorText)) {
             $updatedAt = $syncText
@@ -694,8 +723,8 @@ function Get-UiModel {
 
     $isLive = [bool](Get-JsonValue $data 'isLive')
     $source = [string](Get-JsonValue $data 'source')
-    $updatedAt = [string](Get-JsonValue $data 'updatedAt')
-    $lastSuccessAt = [string](Get-JsonValue $data 'lastSuccessAt')
+    $updatedAt = Get-JsonValue $data 'updatedAt'
+    $lastSuccessAt = Get-JsonValue $data 'lastSuccessAt'
     if ([string]::IsNullOrWhiteSpace($lastSuccessAt)) {
         $lastSuccessAt = $updatedAt
     }
@@ -706,13 +735,11 @@ function Get-UiModel {
     $lastError = [string](Get-JsonValue $data 'lastError')
     $liveSources = @('official_console_browser', 'official_console_background')
     if ($isLive -and $liveSources -contains $source) {
-        try {
-            $age = [DateTime]::UtcNow - [DateTime]::Parse($lastSuccessAt).ToUniversalTime()
-            if ($age.TotalMinutes -gt 10) {
-                $isLive = $false
-            }
+        $lastSuccessTime = Convert-ToDateTimeOffset $lastSuccessAt
+        if ($null -eq $lastSuccessTime) {
+            $isLive = $false
         }
-        catch {
+        elseif (([datetimeoffset]::Now - $lastSuccessTime).TotalMinutes -gt 10) {
             $isLive = $false
         }
     }
@@ -754,7 +781,10 @@ if ($SelfTest) {
     if ($countdownProbe -notmatch '后重置' -or $countdownProbe -eq '旧的静态文本') {
         throw 'OpenCode Go 动态倒计时自测失败'
     }
-    if ((Format-UpdatedText '2026-08-13T13:14:15Z') -notmatch '^已同步 \d{2}:\d{2}:\d{2}$') {
+    $utcTimeProbe = [datetime]::SpecifyKind([datetime]'2026-08-13T13:14:15', [DateTimeKind]::Utc)
+    $expectedLocalTime = $utcTimeProbe.ToLocalTime().ToString('HH:mm:ss')
+    if ((Format-UpdatedText $utcTimeProbe) -ne ('已同步 ' + $expectedLocalTime) -or
+        (Format-UpdatedText '2026-08-13T13:14:15Z') -ne ('已同步 ' + $expectedLocalTime)) {
         throw '同步时间精度自测失败'
     }
     foreach ($id in $script:Profiles.Keys) {

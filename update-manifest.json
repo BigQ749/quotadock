@@ -1,9 +1,9 @@
 {
-  "version": "0.1.7",
+  "version": "0.1.8",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.7.zip",
-  "sha256": "61808e178331ecc00b8861a3d4e031d248bfefc461366ec16499d83532b25b78",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.7",
-  "notes": "修复 OpenCode Go 同步时间显示：保存绝对重置时间、浮窗动态计算倒计时，并将最近成功同步时间精确到秒。"
+  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.8.zip",
+  "sha256": "38156b3dd36791dc22c7ef456962190b5a40928686499a867400f2f3e0ee48ad",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.8",
+  "notes": "修复 OpenCode Go 同步时间时区显示：UTC 数据按本机时区显示，并保留动态重置倒计时。"
 }

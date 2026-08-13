@@ -48,8 +48,8 @@ try {
     if (Test-Path -LiteralPath $manifestPath) {
         try { $existingNotes = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).notes) } catch {}
     }
-    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.7') {
-        $existingNotes = '修复 OpenCode Go 同步时间显示：保存绝对重置时间、浮窗动态计算倒计时，并将最近成功同步时间精确到秒。'
+    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.8') {
+        $existingNotes = '修复 OpenCode Go 同步时间时区显示：UTC 数据按本机时区显示，并保留动态重置倒计时。'
     }
     $manifest = [ordered]@{
         version      = $version

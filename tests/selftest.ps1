@@ -196,6 +196,10 @@ if ($hostSource -notmatch 'Format-OpenCodeResetText' -or
     $hostSource -notmatch '轮询同步') {
     throw 'REGRESSION_FAIL: OpenCode UI must show a live countdown and second-level polling time'
 }
+if ($hostSource -notmatch 'function Convert-ToDateTimeOffset' -or
+    $hostSource -notmatch 'ToLocalTime\(\)') {
+    throw 'REGRESSION_FAIL: UTC quota timestamps must be converted using their original kind and local timezone'
+}
 $bridgeSource = Get-Content -LiteralPath (Join-Path $root 'opencode_go_browser_bridge.ps1') -Raw -Encoding UTF8
 if ($bridgeSource -notmatch 'Request-HostRefresh' -or
     $bridgeSource -notmatch "refresh\|opencode") {
