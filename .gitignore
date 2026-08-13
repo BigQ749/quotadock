@@ -25,6 +25,8 @@ quota-floater-*.png
 quotadock-ui-*.png
 
 # Build output
-dist/
+dist/*
+!dist/
 output/
 *.zip
+!dist/QuotaDock-v*.zip

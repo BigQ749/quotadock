@@ -38,7 +38,10 @@ Invoke-QuotaDockSelfTest 'quota_center.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'quota_fusion_host.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
+Invoke-QuotaDockSelfTest 'install_quota_update.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'tests/floater_menu_smoke.ps1' @()
+Invoke-QuotaDockSelfTest 'tests/update_package_smoke.ps1' @()
+Invoke-QuotaDockSelfTest 'tests/update_install_e2e_smoke.ps1' @()
 
 $centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -Raw -Encoding UTF8
 $hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
@@ -85,6 +88,21 @@ if ($centerSource -notmatch '\$script:UpdateResultPath' -or $centerSource -notma
 if ($centerSource -notmatch '\$script:UpdateResultConsumed' -or $centerSource -notmatch 'Consume the result before showing') {
     throw 'REGRESSION_FAIL: update results must be consumed before showing a modal result'
 }
+if ($centerSource -notmatch 'Start-QuotaDockLocalUpdate' -or
+    $centerSource -notmatch 'install_quota_update\.ps1' -or
+    $centerSource -match 'Start-Process \$releaseUrl') {
+    throw 'REGRESSION_FAIL: update result must start the local verified installer, not open a release page'
+}
+if ($centerSource -match '\$nameLabel\.Add_Click' -or
+    $centerSource -match '\$descriptionLabel\.Add_Click' -or
+    $centerSource -match '\$toggle\.Add_Click') {
+    throw 'REGRESSION_FAIL: provider right-click controls must not use Click handlers that can toggle state'
+}
+if ($centerSource -notmatch '\$nameLabel\.Add_MouseDown' -or
+    $centerSource -notmatch '\$descriptionLabel\.Add_MouseDown' -or
+    $centerSource -notmatch '\$toggle\.Add_MouseDown') {
+    throw 'REGRESSION_FAIL: provider left-click behavior must be explicit MouseDown handlers'
+}
 if ($centerSource -match '\$menu\.Add_Closed\s*\(\{\s*\$menu\.Dispose') {
     throw 'REGRESSION_FAIL: provider menus must not dispose themselves during Closed'
 }
@@ -120,6 +138,11 @@ $updateSource = Get-Content -LiteralPath (Join-Path $root 'check_for_updates.ps1
 if ($updateSource -notmatch 'Get-LatestReleaseFromVersionFile' -or
     $updateSource -notmatch 'raw\.githubusercontent\.com') {
     throw 'REGRESSION_FAIL: update checks must fall back when the GitHub API is rate-limited'
+}
+if ($updateSource -notmatch 'Get-LatestReleaseFromManifest' -or
+    $updateSource -notmatch 'download_url' -or
+    $updateSource -notmatch 'sha256') {
+    throw 'REGRESSION_FAIL: update checks must read a direct package manifest and SHA-256'
 }
 if ($centerSource -notmatch 'GitHub 更新接口暂时限流') {
     throw 'REGRESSION_FAIL: rate-limit update results must use a non-error informational message'

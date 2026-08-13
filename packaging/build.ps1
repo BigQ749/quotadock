@@ -29,7 +29,20 @@ if ($Clean -and (Test-Path -LiteralPath $dist)) {
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 
 $iss = Join-Path $PSScriptRoot 'QuotaDock.iss'
-& $CompilerPath $iss
+$versionInclude = Join-Path $PSScriptRoot 'QuotaDock.version.iss'
+try {
+    [System.IO.File]::WriteAllText(
+        $versionInclude,
+        ('#define AppVersion "' + $version + '"' + [Environment]::NewLine),
+        (New-Object System.Text.UTF8Encoding($false))
+    )
+    & $CompilerPath $iss
+}
+finally {
+    if (Test-Path -LiteralPath $versionInclude) {
+        Remove-Item -LiteralPath $versionInclude -Force -ErrorAction SilentlyContinue
+    }
+}
 if ($LASTEXITCODE -ne 0) {
     throw ('ISCC 构建失败，退出码: ' + $LASTEXITCODE)
 }

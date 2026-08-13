@@ -1,4 +1,4 @@
-#define AppVersion "0.1.2"
+#include "QuotaDock.version.iss"
 
 [Setup]
 AppId={{D6F2C99B-1D5E-4F3C-9C7A-000000000001}

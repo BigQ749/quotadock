@@ -22,7 +22,7 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 | 🖱️ | 真实拖拽与拆分 | 融合窗口可整体拖动；把某张卡片拖出窗口，才会拆成独立浮窗。 |
 | 🔄 | 运行状态同步 | 管理中心显示已打开、已吸附、已最小化和未打开，并从宿主状态实时校正。 |
 | 🛡️ | 本地优先 | UI 只读本地 JSON；仓库不包含 Cookie、凭据、真实额度快照或个人路径。 |
-| ⬆️ | 用户控制更新 | 启动时检查 GitHub Release；标题栏的 `↑ 检查更新` 可查看当前版本并手动检查，发现新版本后由用户决定是否下载。 |
+| ⬆️ | 用户控制更新 | 启动时检查公开更新清单；标题栏的 `↑ 检查更新` 可查看当前版本并手动检查，发现新版本后直接下载、校验、替换并重启。 |
 
 ## 下载与系统支持
 
@@ -109,11 +109,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_background
 
 QuotaDock 的更新分成三步：
 
-1. 启动时检查 GitHub Releases，默认 24 小时内不重复请求。
+1. 启动时读取公开 `update-manifest.json`，默认 24 小时内不重复请求；清单不可用时再使用 GitHub API/VERSION 兜底。
 2. 管理中心标题栏的 `↑ 检查更新` 可查看当前版本并立即检查一次，绕过本地检查缓存。
-3. 发现更高版本后弹出下载提示；用户点击“打开下载页”后自行下载安装，不会静默覆盖，也不会上传本地额度数据。
+3. 发现更高版本后显示当前/最新版本；用户点击“立即更新”后，QuotaDock 下载 ZIP 更新包，校验清单中的 SHA-256，关闭当前进程、替换程序文件并自动重启。不会上传本地额度数据。
 
-维护者只需修改 `VERSION`、提交匹配的 `vX.Y.Z` tag，工作流就会构建安装器、生成 SHA-256 文件并发布 Release。详细步骤见 [`docs/release.md`](docs/release.md)。
+维护者只需同步修改 `VERSION`、运行更新包自检、提交匹配的 `vX.Y.Z` tag，工作流就会构建安装器、直接更新 ZIP、生成 SHA-256 文件并发布 Release。详细步骤见 [`docs/release.md`](docs/release.md)。
 
 ## 从源码运行与构建
 

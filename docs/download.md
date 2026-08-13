@@ -30,7 +30,7 @@ Get-Content .\SHA256SUMS.txt
 
 ## 更新
 
-客户端只检查 GitHub Releases 的版本号。新版本提醒后，用户可以打开下载页、校验 SHA-256、再次运行安装器并选择目标目录。当前版本不做静默更新，也不在后台上传本地数据。
+客户端读取公开的 `update-manifest.json`。新版本提醒后，用户点击“立即更新”，QuotaDock 会直接下载版本化 ZIP、校验 SHA-256、等待当前中心退出、替换程序文件并自动重启；用户数据仍保存在 `%LOCALAPPDATA%\QuotaDock`，不会上传到仓库。
 
 ## 为什么没有 Mac/Linux 下载项
 

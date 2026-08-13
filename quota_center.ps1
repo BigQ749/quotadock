@@ -390,10 +390,82 @@ function Start-QuotaDockUpdateCheck {
             '-File'
             $updateScript
             '-ShowDialog'
+            '-InstallRoot'
+            $root
+            '-CenterPid'
+            ([string]$PID)
         ) | Out-Null
     }
     catch {
         Write-CenterError 'update-check' $_
+    }
+}
+
+function Start-QuotaDockLocalUpdate {
+    param(
+        [string]$DownloadUrl,
+        [string]$ExpectedSha256,
+        [string]$TargetVersion
+    )
+    if ([string]::IsNullOrWhiteSpace($DownloadUrl) -or
+        [string]::IsNullOrWhiteSpace($ExpectedSha256) -or
+        $ExpectedSha256 -notmatch '^[A-Fa-f0-9]{64}$') {
+        [System.Windows.Forms.MessageBox]::Show(
+            $form,
+            '该版本没有可验证的更新包，QuotaDock 已停止本次更新。请稍后重试。',
+            '无法安全更新',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        ) | Out-Null
+        Set-Status '更新包缺少 SHA-256 校验值'
+        return $false
+    }
+    $updater = Join-Path $root 'install_quota_update.ps1'
+    if (-not (Test-Path -LiteralPath $updater)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            $form,
+            '本机缺少本地更新组件，无法替换当前版本。',
+            '无法安全更新',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+        Set-Status '本地更新组件不存在'
+        return $false
+    }
+    try {
+        Start-Process -FilePath $powershell -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @(
+            '-NoProfile'
+            '-ExecutionPolicy'
+            'Bypass'
+            '-File'
+            $updater
+            '-PackageUrl'
+            $DownloadUrl
+            '-ExpectedSha256'
+            $ExpectedSha256
+            '-TargetVersion'
+            $TargetVersion
+            '-InstallRoot'
+            $root
+            '-ParentPid'
+            ([string]$PID)
+            '-RestartCenter'
+        ) | Out-Null
+        Set-Status ('正在下载 QuotaDock ' + $TargetVersion + '，完成后会自动重启…')
+        Exit-Center
+        return $true
+    }
+    catch {
+        Write-CenterError 'start-local-update' $_
+        [System.Windows.Forms.MessageBox]::Show(
+            $form,
+            ('启动本地更新失败：' + $_.Exception.Message),
+            '无法更新 QuotaDock',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+        Set-Status '更新启动失败'
+        return $false
     }
 }
 
@@ -584,8 +656,13 @@ function Show-UpdateResult {
         $latest = [string](Get-JsonValue $result 'latestVersion')
         $hasUpdate = [bool](Get-JsonValue $result 'hasUpdate')
         $releaseUrl = [string](Get-JsonValue $result 'releaseUrl')
+        $downloadUrl = [string](Get-JsonValue $result 'downloadUrl')
+        $expectedSha256 = [string](Get-JsonValue $result 'sha256')
         $checkError = [string](Get-JsonValue $result 'checkError')
         if ([string]::IsNullOrWhiteSpace($current)) { $current = '未知' }
+        $canInstall = $hasUpdate -and
+            -not [string]::IsNullOrWhiteSpace($downloadUrl) -and
+            $expectedSha256 -match '^[A-Fa-f0-9]{64}$'
         if (-not [string]::IsNullOrWhiteSpace($checkError)) {
             if ($checkError -match '403|rate.?limit|限流|API.*quota') {
                 $title = '暂时无法检查 QuotaDock 更新'
@@ -600,7 +677,12 @@ function Show-UpdateResult {
         }
         elseif ($hasUpdate) {
             $title = '发现 QuotaDock 新版本'
-            $body = '当前版本：' + $current + [Environment]::NewLine + '最新版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '点击“是”打开 GitHub Release 下载页；不会静默安装。'
+            if ($canInstall) {
+                $body = '当前版本：' + $current + [Environment]::NewLine + '最新版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '点击“是”直接下载并校验更新包。QuotaDock 会关闭当前窗口、替换本地程序文件并自动重启；不会上传本地额度数据。'
+            }
+            else {
+                $body = '当前版本：' + $current + [Environment]::NewLine + '检测到版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '远端没有可验证的更新包。为保护本地程序，本次不会安装。'
+            }
             $icon = [System.Windows.Forms.MessageBoxIcon]::Information
         }
         else {
@@ -608,10 +690,10 @@ function Show-UpdateResult {
             $body = '当前版本：' + $current + [Environment]::NewLine + '已检查版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '目前不需要更新。'
             $icon = [System.Windows.Forms.MessageBoxIcon]::Information
         }
-        $buttons = if ($hasUpdate -and -not [string]::IsNullOrWhiteSpace($releaseUrl)) { [System.Windows.Forms.MessageBoxButtons]::YesNo } else { [System.Windows.Forms.MessageBoxButtons]::OK }
+        $buttons = if ($canInstall) { [System.Windows.Forms.MessageBoxButtons]::YesNo } else { [System.Windows.Forms.MessageBoxButtons]::OK }
         $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, $buttons, $icon)
-        if ($hasUpdate -and -not [string]::IsNullOrWhiteSpace($releaseUrl) -and $choice -eq [System.Windows.Forms.DialogResult]::Yes) {
-            Start-Process $releaseUrl
+        if ($canInstall -and $choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+            return (Start-QuotaDockLocalUpdate $downloadUrl $expectedSha256 $latest)
         }
         Set-Status '更新检查已完成'
         return $true
@@ -1357,10 +1439,11 @@ function New-ProviderToggle {
         $knobBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(248, 250, 253))
         try { $graphics.FillEllipse($knobBrush, $knobRect) } finally { $knobBrush.Dispose() }
     })
-    $toggle.Add_Click({
+    $toggle.Add_MouseDown({
         param($sender, $eventArgs)
-        $id = [string]$sender.Tag
-        Toggle-Provider $id
+        if ($eventArgs.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+            Toggle-Provider ([string]$sender.Tag)
+        }
     })
     $Parent.Controls.Add($toggle)
     return $toggle
@@ -1586,15 +1669,17 @@ foreach ($provider in $providers.Keys) {
             Toggle-Provider ([string]$sender.Tag)
         }
     }.GetNewClosure())
-    $nameLabel.Add_Click({
+    $nameLabel.Add_MouseDown({
         param($sender, $eventArgs)
-        $id = [string]$sender.Parent.Tag
-        Toggle-Provider $id
+        if ($eventArgs.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+            Toggle-Provider ([string]$sender.Parent.Tag)
+        }
     }.GetNewClosure())
-    $descriptionLabel.Add_Click({
+    $descriptionLabel.Add_MouseDown({
         param($sender, $eventArgs)
-        $id = [string]$sender.Parent.Tag
-        Toggle-Provider $id
+        if ($eventArgs.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+            Toggle-Provider ([string]$sender.Parent.Tag)
+        }
     }.GetNewClosure())
     $index++
 }

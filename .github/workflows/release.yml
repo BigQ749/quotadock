@@ -32,6 +32,10 @@ jobs:
         shell: pwsh
         run: .\packaging\build.ps1 -Clean
 
+      - name: Build direct update package
+        shell: pwsh
+        run: .\packaging\build_update_package.ps1 -Clean
+
       - name: Create checksum
         shell: pwsh
         run: |
