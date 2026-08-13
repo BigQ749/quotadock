@@ -622,9 +622,6 @@ function Get-ProviderRuntimeCaption {
     }
     if (Test-ProviderActuallyOpen $Provider) {
         $state = $script:ActualProviderState[$Provider]
-        if ([bool](Get-JsonValue $state 'docked')) {
-            return '已打开 · 已吸附'
-        }
         if ([bool](Get-JsonValue $state 'minimized')) {
             return '已打开 · 已最小化'
         }
@@ -1039,6 +1036,16 @@ function Open-AddProviderDialog {
     $dialog.MinimizeBox = $false
     $dialog.MaximizeBox = $false
     $dialog.ShowInTaskbar = $false
+    # The center is intentionally TopMost. Keep this modal child above it;
+    # otherwise the dialog flashes behind the disabled owner and the center
+    # looks frozen because ShowDialog is still blocking its UI thread.
+    $dialog.TopMost = $true
+    $dialog.Add_Shown({
+        $dialog.TopMost = $true
+        $dialog.BringToFront()
+        $dialog.Activate()
+        [QuotaCenterNativeWindow]::BringToTop($dialog.Handle)
+    }.GetNewClosure())
     $dialog.BackColor = $background
     $dialog.ForeColor = $foreground
     $dialog.Font = New-UiFont 'Microsoft YaHei UI' 14

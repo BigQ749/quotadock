@@ -1,9 +1,9 @@
 {
-  "version": "0.1.9",
+  "version": "0.1.10",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.9.zip",
-  "sha256": "49dbf7b7a0aae0a7aebddcf343ebd8b941e4c95c5a5719167d80d03788f48560",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.9",
-  "notes": "新增标准 Windows 安装器：支持选择安装目录、快捷方式、可选开机启动，并将 ZIP 标记为便携版/更新包。"
+  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.10.zip",
+  "sha256": "ecb56c196fdb2550904c9440a6e2afe0c496c94c06582e1057638be22a80265d",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.10",
+  "notes": "修复添加其他平台对话框被置顶管理中心遮挡导致卡死的问题，并移除“已吸附”状态文字。"
 }

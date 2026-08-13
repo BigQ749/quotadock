@@ -118,6 +118,12 @@ if ($centerSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $centerSource 
 if ($centerSource -notmatch '已打开' -or $centerSource -notmatch '已关闭') {
     throw 'REGRESSION_FAIL: provider actions must expose completion status'
 }
+if ($centerSource -match '已打开 · 已吸附') {
+    throw 'REGRESSION_FAIL: center and tray must not expose the docked status label'
+}
+if ($centerSource -notmatch '\$dialog\.TopMost\s*=\s*\$true') {
+    throw 'REGRESSION_FAIL: add-provider modal must stay above the TopMost center'
+}
 if ($hostSource -notmatch 'System\.Drawing\.Size\(380, 0\)' -or $hostSource -notmatch "New-HostFont 'Microsoft YaHei UI' 17") {
     throw 'REGRESSION_FAIL: floater context menu must use the enlarged menu scale'
 }
