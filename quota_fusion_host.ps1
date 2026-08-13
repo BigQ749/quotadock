@@ -299,8 +299,9 @@ $script:PulseForms = @{}
 $script:PulseTimer = $null
     $script:DockTimer = $null
     $script:ClosingForms = @{}
-    $script:MergePending = @{}
-    $script:MergeConsumed = @{}
+$script:MergePending = @{}
+$script:MergeConsumed = @{}
+$script:HostShuttingDown = $false
 $script:DockRevealDelayMs = 650
 $script:DockHideDelayMs = 280
 # The first value is the visible depth into the screen; the second is the
@@ -2579,6 +2580,45 @@ function Close-Card {
     Remove-CardFromFused $form $card $true
 }
 
+function Refresh-CardModels {
+    foreach ($provider in @($script:Cards.Keys)) {
+        $card = $script:Cards[$provider]
+        if ($null -ne $card) {
+            $card.Model = Get-UiModel $provider
+            if ($null -ne $card.Window -and -not $card.Window.IsDisposed) {
+                $card.Window.Invalidate()
+            }
+        }
+    }
+}
+
+function Shutdown-Host {
+    if ($script:HostShuttingDown) {
+        return
+    }
+    $script:HostShuttingDown = $true
+    try {
+        $forms = @($script:FormCards.Keys)
+        foreach ($form in $forms) {
+            if ($null -ne $form -and -not $form.IsDisposed) {
+                try { $form.Close() } catch { Write-Log $errorLog ('shutdown-form: ' + ($_ | Out-String)) }
+            }
+        }
+        $script:Cards.Clear()
+        $script:FormCards.Clear()
+        $script:DockState.Clear()
+        $script:Minimized.Clear()
+        $script:Expanded.Clear()
+        $script:DragState.Clear()
+        $script:FusionFx.Clear()
+        $script:PulseForms.Clear()
+        Save-HostState -Force
+    }
+    finally {
+        [System.Windows.Forms.Application]::Exit()
+    }
+}
+
 function Process-Requests {
     # QuotaDock can add a provider while this host is already running. Reload
     # the small local registry before validating the request ID so a restart
@@ -2602,6 +2642,14 @@ function Process-Requests {
         else {
             $action = $parts[0].ToLowerInvariant()
             $provider = $parts[1]
+        }
+        if ($action -eq 'shutdown') {
+            Shutdown-Host
+            return
+        }
+        if ($action -eq 'refresh') {
+            Refresh-CardModels
+            continue
         }
         # A custom provider can be removed from the registry before this host
         # gets its next timer tick.  Removal must still close an already-open
@@ -2653,15 +2701,7 @@ try {
     $dataTimer.Interval = 5000
     $dataTimer.Add_Tick({
         try {
-            foreach ($provider in @($script:Cards.Keys)) {
-                $card = $script:Cards[$provider]
-                if ($null -ne $card) {
-                    $card.Model = Get-UiModel $provider
-                    if ($null -ne $card.Window -and -not $card.Window.IsDisposed) {
-                        $card.Window.Invalidate()
-                    }
-                }
-            }
+            Refresh-CardModels
             Save-HostState
         }
         catch {

@@ -172,4 +172,24 @@ if ($backgroundSource -notmatch 'Write-QuotaFailureState' -or
     $backgroundSource -notmatch 'QuotaFusionDesktop\\opencode_go_credentials') {
     throw 'REGRESSION_FAIL: OpenCode background sync must expose failure state and use a single writer lock'
 }
+if ($centerSource -notmatch "ValidateSet\('add', 'close', 'remove', 'refresh', 'shutdown'\)" -or
+    $centerSource -notmatch 'Stop-QuotaDockHost' -or
+    $centerSource -notmatch 'Stop-QuotaDockSyncProcesses') {
+    throw 'REGRESSION_FAIL: full QuotaDock exit must shut down the host and owned sync processes'
+}
+if ($hostSource -notmatch 'function Refresh-CardModels' -or
+    $hostSource -notmatch 'function Shutdown-Host' -or
+    $hostSource -notmatch "\$action -eq 'shutdown'" -or
+    $hostSource -notmatch "\$action -eq 'refresh'") {
+    throw 'REGRESSION_FAIL: host must handle refresh and shutdown requests'
+}
+if ($backgroundSource -notmatch 'Request-HostRefresh' -or
+    $backgroundSource -notmatch "refresh\|opencode") {
+    throw 'REGRESSION_FAIL: OpenCode background writes must request an immediate host repaint'
+}
+$bridgeSource = Get-Content -LiteralPath (Join-Path $root 'opencode_go_browser_bridge.ps1') -Raw -Encoding UTF8
+if ($bridgeSource -notmatch 'Request-HostRefresh' -or
+    $bridgeSource -notmatch "refresh\|opencode") {
+    throw 'REGRESSION_FAIL: OpenCode browser bridge writes must request an immediate host repaint'
+}
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

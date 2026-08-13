@@ -12,6 +12,7 @@ $dataPath = Join-Path $stateDir 'data\opencode_go.json'
 $credentialPath = Join-Path $stateDir 'opencode_go_credentials.json'
 $legacyCredentialPath = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'QuotaFusionDesktop\opencode_go_credentials.json'
 $syncLog = Join-Path $env:TEMP 'quotadock-opencode-background.log'
+$hostRequestFile = Join-Path $env:TEMP 'quotadock-host-requests.txt'
 $mutexName = 'Local\QuotaDockOpenCodeGoWriteMutex'
 $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36'
 
@@ -43,6 +44,16 @@ function Write-BackgroundLog {
         Add-Content -LiteralPath $syncLog -Value ((Get-Date -Format 's') + ' ' + $Message) -Encoding UTF8
     }
     catch {
+    }
+}
+
+function Request-HostRefresh {
+    try {
+        $encoding = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::AppendAllText($hostRequestFile, ('refresh|opencode' + [Environment]::NewLine), $encoding)
+    }
+    catch {
+        Write-BackgroundLog ('host-refresh: ' + $_.Exception.Message)
     }
 }
 
@@ -381,6 +392,7 @@ function Write-QuotaSnapshot {
         windows   = @($Windows)
     }
     Write-JsonAtomic $dataPath $output
+    Request-HostRefresh
 }
 
 function Write-QuotaFailureState {
@@ -404,6 +416,7 @@ function Write-QuotaFailureState {
         Set-JsonProperty $existing 'note' 'OpenCode Go 后台同步失败；保留最近一次成功额度。'
     }
     Write-JsonAtomic $dataPath $existing
+    Request-HostRefresh
 }
 
 function Invoke-BackgroundSync {

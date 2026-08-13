@@ -22,6 +22,7 @@ elseif (Test-Path -LiteralPath $sourceConfigPath) {
     }
 }
 $bridgeLog = Join-Path $env:TEMP 'quotadock-opencode-bridge.log'
+$hostRequestFile = Join-Path $env:TEMP 'quotadock-host-requests.txt'
 $mutexName = 'Local\QuotaDockOpenCodeGoWriteMutex'
 
 function Write-BridgeLog {
@@ -30,6 +31,16 @@ function Write-BridgeLog {
         Add-Content -LiteralPath $bridgeLog -Value ((Get-Date -Format 's') + ' ' + $Message) -Encoding UTF8
     }
     catch {
+    }
+}
+
+function Request-HostRefresh {
+    try {
+        $encoding = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::AppendAllText($hostRequestFile, ('refresh|opencode' + [Environment]::NewLine), $encoding)
+    }
+    catch {
+        Write-BridgeLog ('host-refresh: ' + $_.Exception.Message)
     }
 }
 
@@ -139,6 +150,7 @@ function Write-QuotaFile {
     catch {
         Move-Item -LiteralPath $tmpPath -Destination $dataPath -Force
     }
+    Request-HostRefresh
 }
 
 $dataMutex = New-Object System.Threading.Mutex($false, $mutexName)

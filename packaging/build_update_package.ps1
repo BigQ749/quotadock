@@ -48,8 +48,8 @@ try {
     if (Test-Path -LiteralPath $manifestPath) {
         try { $existingNotes = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).notes) } catch {}
     }
-    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.5') {
-        $existingNotes = '同步状态与 OpenCode Go 旧版凭证路径兼容修复：下载后校验 SHA-256，关闭 QuotaDock，替换运行文件并自动重启。'
+    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.6') {
+        $existingNotes = '修复 OpenCode Go 成功同步后的浮窗刷新，并让退出 QuotaDock 时统一关闭所有额度浮窗与后台同步进程。'
     }
     $manifest = [ordered]@{
         version      = $version

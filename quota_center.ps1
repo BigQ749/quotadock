@@ -295,7 +295,7 @@ function Load-State {
 
 function Write-HostRequest {
     param(
-        [ValidateSet('add', 'close', 'remove')]
+        [ValidateSet('add', 'close', 'remove', 'refresh', 'shutdown')]
         [string]$Action,
         [string]$Provider
     )
@@ -371,6 +371,60 @@ function Ensure-HostProcess {
         $hostPath
     ) | Out-Null
     Start-Sleep -Milliseconds 260
+}
+
+function Get-QuotaDockOwnedProcesses {
+    param([string[]]$Patterns)
+    return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $process = $_
+        $_.ProcessId -ne $PID -and
+        $_.Name -in @('pwsh.exe', 'powershell.exe', 'python.exe', 'pythonw.exe') -and
+        $null -ne $_.CommandLine -and
+        (@($Patterns | Where-Object { [string]$process.CommandLine -like [string]$_ }).Count -gt 0)
+    })
+}
+
+function Stop-QuotaDockSyncProcesses {
+    $patterns = @(
+        '*codex_quota_fetch_loop.ps1*',
+        '*grok-weekly-quota-widget*monitor.py*--sync-only*',
+        '*opencode_go_background_sync.ps1*',
+        '*opencode_go_browser_bridge.ps1*'
+    )
+    foreach ($process in @(Get-QuotaDockOwnedProcesses $patterns)) {
+        Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Stop-QuotaDockHost {
+    # Ask the single host to close all cards first, then use its exact PID as a
+    # bounded fallback if an older host is stuck in a modal/native call.
+    try {
+        Write-HostRequest 'shutdown' '*'
+    }
+    catch {
+        Write-CenterError 'shutdown-host-request' $_
+    }
+    $patterns = @('*quota_fusion_host.ps1*')
+    $deadline = [datetime]::UtcNow.AddMilliseconds(1200)
+    do {
+        $running = @(Get-QuotaDockOwnedProcesses $patterns)
+        if ($running.Count -eq 0) {
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    } while ([datetime]::UtcNow -lt $deadline)
+    foreach ($process in @(Get-QuotaDockOwnedProcesses $patterns)) {
+        Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+    }
+
+    # Clean up any legacy standalone windows from earlier versions as well;
+    # these are QuotaDock-owned scripts, not provider applications.
+    $legacyPatterns = @('*quota_small_widget.ps1*', '*quota_fusion_desktop.ps1*')
+    foreach ($process in @(Get-QuotaDockOwnedProcesses $legacyPatterns)) {
+        Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+    }
+    Remove-Item -LiteralPath $requestFile -Force -ErrorAction SilentlyContinue
 }
 
 function Start-QuotaDockUpdateCheck {
@@ -812,6 +866,8 @@ function Exit-Center {
     if ($null -ne $notify) {
         $notify.Visible = $false
     }
+    Stop-QuotaDockHost
+    Stop-QuotaDockSyncProcesses
     if ($null -ne $form -and -not $form.IsDisposed) {
         $form.Close()
     }

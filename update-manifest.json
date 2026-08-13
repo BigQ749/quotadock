@@ -1,9 +1,9 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.5.zip",
-  "sha256": "323bfac4c0037f672232d71f4f14c94a84795cc6f87b6f03b57e51565f9b41e7",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.5",
-  "notes": "同步状态与 OpenCode Go 旧版凭证路径兼容修复：下载后校验 SHA-256，关闭 QuotaDock，替换运行文件并自动重启。"
+  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.6.zip",
+  "sha256": "67381d7492876d32544efcebe332a93bd2903001a800927adc3fb80c77e3be79",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.6",
+  "notes": "修复 OpenCode Go 成功同步后的浮窗刷新，并让退出 QuotaDock 时统一关闭所有额度浮窗与后台同步进程。"
 }
