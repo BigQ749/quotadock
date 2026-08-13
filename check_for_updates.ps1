@@ -34,9 +34,36 @@ function Save-UpdateCache {
     }
 }
 
+function Get-LatestReleaseFromVersionFile {
+    $headers = @{ 'User-Agent' = 'QuotaDock-Update-Checker' }
+    $rawUri = 'https://raw.githubusercontent.com/' + $repository + '/main/VERSION'
+    $tag = ([string](Invoke-RestMethod -Uri $rawUri -Headers $headers -TimeoutSec 15)).Trim()
+    if ($null -eq (Normalize-Version $tag)) {
+        throw ('远端 VERSION 无效：' + $tag)
+    }
+    return [pscustomobject]@{
+        tag_name = $tag
+        name     = $tag
+        html_url = 'https://github.com/' + $repository + '/releases'
+    }
+}
+
 function Get-LatestRelease {
     $headers = @{ 'User-Agent' = 'QuotaDock-Update-Checker'; Accept = 'application/vnd.github+json' }
-    return Invoke-RestMethod -Uri ('https://api.github.com/repos/' + $repository + '/releases/latest') -Headers $headers -TimeoutSec 15
+    try {
+        return Invoke-RestMethod -Uri ('https://api.github.com/repos/' + $repository + '/releases/latest') -Headers $headers -TimeoutSec 15
+    }
+    catch {
+        $apiError = $_.Exception.Message
+        try {
+            # The public VERSION file is not subject to the GitHub API quota.
+            # It preserves update detection when /releases/latest returns 403.
+            return Get-LatestReleaseFromVersionFile
+        }
+        catch {
+            throw ('GitHub API：' + $apiError + '；VERSION 兜底：' + $_.Exception.Message)
+        }
+    }
 }
 
 if ($SelfTest) {

@@ -38,6 +38,7 @@ Invoke-QuotaDockSelfTest 'quota_center.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'quota_fusion_host.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
+Invoke-QuotaDockSelfTest 'tests/floater_menu_smoke.ps1' @()
 
 $centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -Raw -Encoding UTF8
 $hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
@@ -99,7 +100,28 @@ if ($centerSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $centerSource 
 if ($centerSource -notmatch '已打开' -or $centerSource -notmatch '已关闭') {
     throw 'REGRESSION_FAIL: provider actions must expose completion status'
 }
-if ($hostSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $hostSource -notmatch "New-HostFont 'Microsoft YaHei UI' 16") {
+if ($hostSource -notmatch 'System\.Drawing\.Size\(380, 0\)' -or $hostSource -notmatch "New-HostFont 'Microsoft YaHei UI' 17") {
     throw 'REGRESSION_FAIL: floater context menu must use the enlarged menu scale'
+}
+if ($centerSource -notmatch '\$menuText = \[System\.Drawing\.Color\]::FromArgb\(239, 243, 249\)' -or
+    $centerSource -notmatch '\$item\.ForeColor = \$menuText') {
+    throw 'REGRESSION_FAIL: center context menu items must explicitly use a readable light foreground'
+}
+if ($hostSource -notmatch '\$formCardsMap = \$script:FormCards' -or
+    $hostSource -notmatch '\$cards = @\(\$formCardsMap\[\$owner\]\)') {
+    throw 'REGRESSION_FAIL: floater context menu must capture host state for WinForms callbacks'
+}
+if ($hostSource -notmatch '\$state\.ContextMenuHold = \$true' -or
+    $hostSource -notmatch 'ContextMenuHold = \$false' -or
+    $hostSource -notmatch 'ContextMenuOpen = \$false') {
+    throw 'REGRESSION_FAIL: floater right-click must hold the revealed window open'
+}
+$updateSource = Get-Content -LiteralPath (Join-Path $root 'check_for_updates.ps1') -Raw -Encoding UTF8
+if ($updateSource -notmatch 'Get-LatestReleaseFromVersionFile' -or
+    $updateSource -notmatch 'raw\.githubusercontent\.com') {
+    throw 'REGRESSION_FAIL: update checks must fall back when the GitHub API is rate-limited'
+}
+if ($centerSource -notmatch 'GitHub 更新接口暂时限流') {
+    throw 'REGRESSION_FAIL: rate-limit update results must use a non-error informational message'
 }
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

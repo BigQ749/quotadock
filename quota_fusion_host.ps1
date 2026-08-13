@@ -1497,7 +1497,7 @@ function Get-RevealLocation {
 function Schedule-AutoDock {
     param($Form, [int]$DelayMs = $script:DockHideDelayMs)
     $state = $script:DockState[$Form]
-    if ($null -eq $state -or $state.Docked -or $state.ContextMenuOpen -or $state.HoldOpen -or -not $state.HoverRevealed) {
+    if ($null -eq $state -or $state.Docked -or $state.ContextMenuOpen -or $state.ContextMenuHold -or $state.HoldOpen -or -not $state.HoverRevealed) {
         return
     }
     $state.AutoDockAt = [datetime]::UtcNow.AddMilliseconds($DelayMs)
@@ -1534,7 +1534,7 @@ function Process-AutoDock {
                 continue
             }
             $state = $script:DockState[$form]
-            if ($null -eq $state -or $state.Docked -or $state.ContextMenuOpen -or $state.HoldOpen -or -not $state.HoverRevealed -or $null -eq $state.AutoDockAt) {
+            if ($null -eq $state -or $state.Docked -or $state.ContextMenuOpen -or $state.ContextMenuHold -or $state.HoldOpen -or -not $state.HoverRevealed -or $null -eq $state.AutoDockAt) {
                 if ($null -ne $state -and $state.Docked -and -not $state.RevealArmed) {
                     $handleBounds = Get-DockHandleScreenBounds $form ([string]$state.Edge)
                     if (-not $handleBounds.Contains($cursor)) {
@@ -1583,7 +1583,7 @@ function Try-DockToEdge {
 function Restore-FromDock {
     param($Form)
     $state = $script:DockState[$Form]
-    if (-not $state.Docked -or -not $state.RevealArmed) {
+    if ($null -eq $state -or -not $state.Docked -or -not $state.RevealArmed) {
         return
     }
     $edge = [string]$state.Edge
@@ -1662,15 +1662,24 @@ function Get-ContextForm {
 
 function New-FloatContextMenu {
     param($Form)
+    # WinForms invokes Opening from a separate PowerShell event scope. Capture
+    # the live hashtable references here instead of indexing $script:* inside
+    # that callback, where the script-scope variable can be null.
+    $formCardsMap = $script:FormCards
+    $dockStateMap = $script:DockState
+    $minimizedMap = $script:Minimized
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
     $menu.ShowImageMargin = $false
-    $menu.BackColor = [System.Drawing.Color]::FromArgb(36, 42, 52)
-    $menu.ForeColor = [System.Drawing.Color]::FromArgb(239, 243, 249)
+    $menuSurface = [System.Drawing.Color]::FromArgb(27, 33, 43)
+    $menuText = [System.Drawing.Color]::FromArgb(239, 243, 249)
+    $menuMuted = [System.Drawing.Color]::FromArgb(166, 180, 198)
+    $menu.BackColor = $menuSurface
+    $menu.ForeColor = $menuText
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
-    $menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
-    $menu.Font = New-HostFont 'Microsoft YaHei UI' 16
-    $menu.Margin = New-Object System.Windows.Forms.Padding(6, 6, 6, 6)
+    $menu.Padding = New-Object System.Windows.Forms.Padding(18, 16, 18, 16)
+    $menu.MinimumSize = New-Object System.Drawing.Size(380, 0)
+    $menu.Font = New-HostFont 'Microsoft YaHei UI' 17
+    $menu.Margin = New-Object System.Windows.Forms.Padding(8, 8, 8, 8)
     $renderer = New-Object System.Windows.Forms.ToolStripProfessionalRenderer
     $renderer.RoundedEdges = $true
     $menu.Renderer = $renderer
@@ -1682,7 +1691,9 @@ function New-FloatContextMenu {
     $closeCardMenu = New-Object System.Windows.Forms.ToolStripMenuItem('关闭其中一张额度卡片')
     foreach ($item in @($keepItem, $resumeItem, $minimizeItem, $closeItem, $closeCardMenu)) {
         $item.Font = $menu.Font
-        $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
+        $item.BackColor = $menuSurface
+        $item.ForeColor = $menuText
+        $item.Padding = New-Object System.Windows.Forms.Padding(16, 12, 16, 12)
     }
     [void]$menu.Items.Add($keepItem)
     [void]$menu.Items.Add($resumeItem)
@@ -1712,13 +1723,25 @@ function New-FloatContextMenu {
             $e.Cancel = $true
             return
         }
+        $state = $dockStateMap[$owner]
+        if ($null -ne $state) {
+            # Arm this before rebuilding the dynamic submenu. The dock timer
+            # must not reclaim a revealed handle while the menu is opening.
+            $state.ContextMenuOpen = $true
+            $state.ContextMenuHold = $true
+            $state.AutoDockAt = $null
+            if ($state.Docked) {
+                $state.RevealArmed = $true
+                Restore-FromDock $owner
+            }
+        }
         foreach ($oldItem in @($closeCardMenu.DropDownItems)) {
             if ($null -ne $oldItem) {
                 $oldItem.Dispose()
             }
         }
         $closeCardMenu.DropDownItems.Clear()
-        $cards = @($script:FormCards[$owner])
+        $cards = @($formCardsMap[$owner])
         $isFused = $cards.Count -gt 1
         $closeCardMenu.Visible = $isFused
         $closeItem.Visible = -not $isFused
@@ -1732,7 +1755,9 @@ function New-FloatContextMenu {
                 $cardTitle = [string]$targetCard.Profile.Title
                 $cardItem = New-Object System.Windows.Forms.ToolStripMenuItem(('关闭 ' + $cardTitle + ' 额度'))
                 $cardItem.Font = $menu.Font
-                $cardItem.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
+                $cardItem.BackColor = $menuSurface
+                $cardItem.ForeColor = $menuText
+                $cardItem.Padding = New-Object System.Windows.Forms.Padding(16, 12, 16, 12)
                 $cardItem.Add_Click({
                     if ($null -ne $targetForm -and -not $targetForm.IsDisposed -and $null -ne $targetCard) {
                         Remove-CardFromFused $targetForm $targetCard $true
@@ -1741,18 +1766,9 @@ function New-FloatContextMenu {
                 [void]$closeCardMenu.DropDownItems.Add($cardItem)
             }
         }
-        $state = $script:DockState[$owner]
-        if ($null -ne $state) {
-            $state.ContextMenuOpen = $true
-            $state.AutoDockAt = $null
-            if ($state.Docked) {
-                $state.RevealArmed = $true
-                Restore-FromDock $owner
-            }
-        }
         $keepItem.Enabled = $null -ne $state -and -not $state.HoldOpen
         $resumeItem.Enabled = $null -ne $state -and $state.HoldOpen
-        $minimizeItem.Text = if ($script:Minimized[$owner]) { '还原浮窗' } else { '最小化浮窗' }
+        $minimizeItem.Text = if ($minimizedMap[$owner]) { '还原浮窗' } else { '最小化浮窗' }
     }.GetNewClosure())
 
     $menu.Add_Opened({
@@ -1770,9 +1786,10 @@ function New-FloatContextMenu {
         if ($null -eq $owner -or $owner.IsDisposed) {
             return
         }
-        $state = $script:DockState[$owner]
+        $state = $dockStateMap[$owner]
         if ($null -ne $state) {
             $state.ContextMenuOpen = $false
+            $state.ContextMenuHold = $false
             if (-not $state.HoldOpen -and -not $state.Docked -and $state.HoverRevealed) {
                 Schedule-AutoDock $owner 1100
             }
@@ -1863,6 +1880,7 @@ function New-FloatWindow {
         AutoDockAt = $null
         RevealArmed = $true
         ContextMenuOpen = $false
+        ContextMenuHold = $false
         HoldOpen = $false
     }
     $script:DragState[$form] = $null
@@ -1908,6 +1926,7 @@ function New-FloatWindow {
             $state = $script:DockState[$sender]
             if ($null -ne $state) {
                 $state.ContextMenuOpen = $true
+                $state.ContextMenuHold = $true
                 $state.AutoDockAt = $null
                 if ($state.Docked) {
                     $state.RevealArmed = $true

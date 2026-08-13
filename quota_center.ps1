@@ -587,9 +587,16 @@ function Show-UpdateResult {
         $checkError = [string](Get-JsonValue $result 'checkError')
         if ([string]::IsNullOrWhiteSpace($current)) { $current = '未知' }
         if (-not [string]::IsNullOrWhiteSpace($checkError)) {
-            $title = 'QuotaDock 更新检查失败'
-            $body = '当前版本：' + $current + [Environment]::NewLine + [Environment]::NewLine + '原因：' + $checkError
-            $icon = [System.Windows.Forms.MessageBoxIcon]::Warning
+            if ($checkError -match '403|rate.?limit|限流|API.*quota') {
+                $title = '暂时无法检查 QuotaDock 更新'
+                $body = '当前版本：' + $current + [Environment]::NewLine + [Environment]::NewLine + 'GitHub 更新接口暂时限流，QuotaDock 仍可正常使用。稍后可再次点击“检查更新”。'
+                $icon = [System.Windows.Forms.MessageBoxIcon]::Information
+            }
+            else {
+                $title = 'QuotaDock 更新检查失败'
+                $body = '当前版本：' + $current + [Environment]::NewLine + [Environment]::NewLine + '原因：' + $checkError
+                $icon = [System.Windows.Forms.MessageBoxIcon]::Warning
+            }
         }
         elseif ($hasUpdate) {
             $title = '发现 QuotaDock 新版本'
@@ -1233,6 +1240,11 @@ function New-ProviderContextMenu {
     $menu.Renderer = New-Object QuotaDockMenuRenderer
     $menu.ShowImageMargin = $false
     $menu.ShowCheckMargin = $false
+    $menuSurface = [System.Drawing.Color]::FromArgb(27, 33, 43)
+    $menuText = [System.Drawing.Color]::FromArgb(239, 243, 249)
+    $menuMuted = [System.Drawing.Color]::FromArgb(166, 180, 198)
+    $menu.BackColor = $menuSurface
+    $menu.ForeColor = $menuText
     $menu.AutoSize = $true
     $menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
     $menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
@@ -1240,6 +1252,8 @@ function New-ProviderContextMenu {
 
     $titleItem = New-Object System.Windows.Forms.ToolStripMenuItem($providers[$Provider].Title)
     $titleItem.Enabled = $false
+    $titleItem.BackColor = $menuSurface
+    $titleItem.ForeColor = $menuMuted
     $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 16 ([System.Drawing.FontStyle]::Bold)
     [void]$menu.Items.Add($titleItem)
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
@@ -1258,6 +1272,10 @@ function New-ProviderContextMenu {
     foreach ($item in @($menu.Items)) {
         if ($item -is [System.Windows.Forms.ToolStripMenuItem]) {
             $item.Font = $menu.Font
+            $item.BackColor = $menuSurface
+            if ($item -ne $titleItem) {
+                $item.ForeColor = $menuText
+            }
             $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
         }
     }
