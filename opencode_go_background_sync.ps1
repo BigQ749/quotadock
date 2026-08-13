@@ -278,6 +278,7 @@ function Get-QuotaWindows {
     }
 
     $output = New-Object System.Collections.ArrayList
+    $capturedAt = [DateTime]::UtcNow
     foreach ($definition in $definitions) {
         if (-not $parsed.ContainsKey($definition.Kind)) {
             throw "缺少 $($definition.Kind) 额度窗口"
@@ -289,6 +290,8 @@ function Get-QuotaWindows {
             usedPercent      = [Math]::Round([double]$window.UsedPercent, 2)
             remainingPercent = [Math]::Round(100 - [double]$window.UsedPercent, 2)
             resetText        = Get-ResetText -Seconds ([int]$window.ResetInSec)
+            resetInSec       = [int]$window.ResetInSec
+            resetAt          = $capturedAt.AddSeconds([int]$window.ResetInSec).ToString('o')
             resetMode        = $definition.Mode
         })
     }
@@ -431,7 +434,8 @@ function Invoke-BackgroundSync {
 if ($SelfTest) {
     $fixture = 'rollingUsage:$R[0]={status:"ok",resetInSec:3600,usagePercent:12.5};weeklyUsage:$R[1]={status:"ok",usagePercent:34,resetInSec:86400};monthlyUsage:$R[2]={status:"ok",resetInSec:2592000,usagePercent:3}'
     $selfTestWindows = Get-QuotaWindows -Html $fixture
-    if ($selfTestWindows.Count -ne 3 -or $selfTestWindows[0].usedPercent -ne 12.5 -or $selfTestWindows[1].usedPercent -ne 34 -or $selfTestWindows[2].usedPercent -ne 3) {
+    if ($selfTestWindows.Count -ne 3 -or $selfTestWindows[0].usedPercent -ne 12.5 -or $selfTestWindows[1].usedPercent -ne 34 -or $selfTestWindows[2].usedPercent -ne 3 -or
+        $selfTestWindows[0].resetInSec -ne 3600 -or [string]::IsNullOrWhiteSpace([string]$selfTestWindows[0].resetAt)) {
         throw 'OpenCode Go 后台解析器自测失败'
     }
     Write-Output 'SELFTEST PASS: SSR 三窗口解析与百分比归一化正常'

@@ -111,12 +111,32 @@ function Write-QuotaFile {
         if ([string]::IsNullOrWhiteSpace($resetText)) {
             throw "missing $kind resetText"
         }
+        $resetAt = [string]$item.resetAt
+        $resetInSec = $null
+        if ($null -ne $item.resetInSec) {
+            try {
+                $candidate = [double]$item.resetInSec
+                if (-not [double]::IsNaN($candidate) -and -not [double]::IsInfinity($candidate) -and $candidate -ge 0) {
+                    $resetInSec = [int][Math]::Ceiling($candidate)
+                }
+            }
+            catch {
+            }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($resetAt)) {
+            try { $resetAt = [datetimeoffset]::Parse($resetAt).ToUniversalTime().ToString('o') } catch { $resetAt = '' }
+        }
+        if ([string]::IsNullOrWhiteSpace($resetAt) -and $null -ne $resetInSec) {
+            $resetAt = [datetimeoffset]::UtcNow.AddSeconds($resetInSec).ToString('o')
+        }
         [void]$canonical.Add([ordered]@{
             kind             = $kind
             title            = $title
             usedPercent      = $used
             remainingPercent = $remaining
             resetText        = $resetText
+            resetInSec       = $resetInSec
+            resetAt          = $resetAt
             resetMode        = $modeMap[$kind]
         })
     }

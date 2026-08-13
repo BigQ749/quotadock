@@ -442,11 +442,60 @@ function Format-UpdatedText {
         return '等待同步'
     }
     try {
-        return '已同步 ' + ([datetimeoffset]::Parse([string]$UpdatedAt).LocalDateTime.ToString('HH:mm'))
+        return '已同步 ' + ([datetimeoffset]::Parse([string]$UpdatedAt).LocalDateTime.ToString('HH:mm:ss'))
     }
     catch {
         return '已同步 ' + [string]$UpdatedAt
     }
+}
+
+function Format-OpenCodeResetText {
+    param($Window)
+
+    $resetAt = [string](Get-JsonValue $Window 'resetAt')
+    $resetInSecValue = Get-JsonValue $Window 'resetInSec'
+    if ([string]::IsNullOrWhiteSpace($resetAt) -and $null -ne $resetInSecValue) {
+        try {
+            $resetInSec = [double]$resetInSecValue
+            if (-not [double]::IsNaN($resetInSec) -and -not [double]::IsInfinity($resetInSec) -and $resetInSec -ge 0) {
+                $resetAt = [datetimeoffset]::UtcNow.AddSeconds($resetInSec).ToString('o')
+            }
+        }
+        catch {
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($resetAt)) {
+        try {
+            $leftSeconds = [int][Math]::Ceiling(([datetimeoffset]::Parse($resetAt) - [datetimeoffset]::Now).TotalSeconds)
+            if ($leftSeconds -le 0) {
+                return '正在重置'
+            }
+            $days = [int][Math]::Floor($leftSeconds / 86400)
+            $hours = [int][Math]::Floor(($leftSeconds % 86400) / 3600)
+            $minutes = [int][Math]::Floor(($leftSeconds % 3600) / 60)
+            $seconds = $leftSeconds % 60
+            if ($days -gt 0) {
+                if ($hours -gt 0) { return ('约 {0}天 {1}小时后重置' -f $days, $hours) }
+                return ('约 {0}天后重置' -f $days)
+            }
+            if ($hours -gt 0) {
+                return ('约 {0}小时 {1}分钟后重置' -f $hours, $minutes)
+            }
+            if ($minutes -gt 0) {
+                return ('约 {0}分 {1}秒后重置' -f $minutes, $seconds)
+            }
+            return ('约 {0}秒后重置' -f $seconds)
+        }
+        catch {
+        }
+    }
+
+    $legacyText = [string](Get-JsonValue $Window 'resetText')
+    if (-not [string]::IsNullOrWhiteSpace($legacyText)) {
+        return $legacyText
+    }
+    return '重置时间未知'
 }
 
 function Get-SyncAgeMinutes {
@@ -640,7 +689,7 @@ function Get-UiModel {
         if ([string]::IsNullOrWhiteSpace($label)) {
             $label = '窗口'
         }
-        [void]$rows.Add((New-Row $label (Format-Percent (Get-JsonValue $window 'remainingPercent')) ([string](Get-JsonValue $window 'resetText'))))
+        [void]$rows.Add((New-Row $label (Format-Percent (Get-JsonValue $window 'remainingPercent')) (Format-OpenCodeResetText $window)))
     }
 
     $isLive = [bool](Get-JsonValue $data 'isLive')
@@ -667,7 +716,9 @@ function Get-UiModel {
             $isLive = $false
         }
     }
-    $badge = if ($isLive) { '实时' } else { '页面快照' }
+    $badge = if ($isLive) {
+        if ($liveSources -contains $source) { '轮询同步' } else { '实时' }
+    } else { '页面快照' }
     $updatedText = Format-UpdatedText $lastSuccessAt
     if ($updatedText -eq '等待同步') {
         $status = $updatedText
@@ -696,6 +747,16 @@ function Get-UiModel {
 if ($SelfTest) {
     Write-Output 'QUOTA_FUSION_HOST_SELFTEST_PASS'
     Write-Output ('PROVIDERS=' + (($script:Profiles.Keys -join ',')))
+    $countdownProbe = Format-OpenCodeResetText ([pscustomobject]@{
+        resetAt = [datetimeoffset]::UtcNow.AddSeconds(125).ToString('o')
+        resetText = '旧的静态文本'
+    })
+    if ($countdownProbe -notmatch '后重置' -or $countdownProbe -eq '旧的静态文本') {
+        throw 'OpenCode Go 动态倒计时自测失败'
+    }
+    if ((Format-UpdatedText '2026-08-13T13:14:15Z') -notmatch '^已同步 \d{2}:\d{2}:\d{2}$') {
+        throw '同步时间精度自测失败'
+    }
     foreach ($id in $script:Profiles.Keys) {
         Write-Output ($id + '_DATA=' + $script:DataDefaults[$id])
         if ($script:Profiles[$id].Kind -eq 'custom') {

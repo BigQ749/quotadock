@@ -48,8 +48,8 @@ try {
     if (Test-Path -LiteralPath $manifestPath) {
         try { $existingNotes = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).notes) } catch {}
     }
-    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.6') {
-        $existingNotes = '修复 OpenCode Go 成功同步后的浮窗刷新，并让退出 QuotaDock 时统一关闭所有额度浮窗与后台同步进程。'
+    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.7') {
+        $existingNotes = '修复 OpenCode Go 同步时间显示：保存绝对重置时间、浮窗动态计算倒计时，并将最近成功同步时间精确到秒。'
     }
     $manifest = [ordered]@{
         version      = $version

@@ -15,6 +15,22 @@
     return `约 ${parts.join(" ")}后重置`;
   }
 
+  function parseDurationSeconds(text) {
+    let total = 0;
+    let found = false;
+    const pattern = /(\d+(?:\.\d+)?)\s*(天|日|小时|时|分钟|分|秒|days?|hours?|minutes?|seconds?)/gi;
+    for (const match of text.matchAll(pattern)) {
+      found = true;
+      const value = Number(match[1]);
+      const unit = match[2].toLowerCase();
+      if (unit === "天" || unit === "日" || unit === "day" || unit === "days") total += value * 86400;
+      else if (unit === "小时" || unit === "时" || unit === "hour" || unit === "hours") total += value * 3600;
+      else if (unit === "分钟" || unit === "分" || unit === "minute" || unit === "minutes") total += value * 60;
+      else total += value;
+    }
+    return found ? Math.max(0, Math.ceil(total)) : null;
+  }
+
   function parseEmbedded() {
     const html = document.documentElement?.outerHTML || "";
     const read = (name, kind, mode, title) => {
@@ -22,12 +38,15 @@
       const match = html.match(pattern);
       if (!match || match[1] !== "ok") return null;
       const used = Number(match[3]);
+      const resetInSec = Math.max(0, Number(match[2]) || 0);
       return {
         kind,
         title,
         usedPercent: used,
         remainingPercent: Math.max(0, Math.min(100, 100 - used)),
-        resetText: formatReset(match[2]),
+        resetText: formatReset(resetInSec),
+        resetInSec,
+        resetAt: new Date(Date.now() + resetInSec * 1000).toISOString(),
         resetMode: mode
       };
     };
@@ -52,12 +71,17 @@
       const match = text.match(pattern);
       if (!match) return null;
       const used = Number(match[1]);
+      const resetInSec = parseDurationSeconds(match[2]);
       windows.push({
         kind,
         title,
         usedPercent: used,
         remainingPercent: Math.max(0, Math.min(100, 100 - used)),
         resetText: `重置于 ${match[2]}`,
+        ...(resetInSec === null ? {} : {
+          resetInSec,
+          resetAt: new Date(Date.now() + resetInSec * 1000).toISOString()
+        }),
         resetMode: mode
       });
     }

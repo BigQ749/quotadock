@@ -187,9 +187,22 @@ if ($backgroundSource -notmatch 'Request-HostRefresh' -or
     $backgroundSource -notmatch "refresh\|opencode") {
     throw 'REGRESSION_FAIL: OpenCode background writes must request an immediate host repaint'
 }
+if ($backgroundSource -notmatch 'resetAt' -or
+    $backgroundSource -notmatch 'resetInSec') {
+    throw 'REGRESSION_FAIL: OpenCode background sync must persist absolute reset metadata'
+}
+if ($hostSource -notmatch 'Format-OpenCodeResetText' -or
+    $hostSource -notmatch "HH:mm:ss" -or
+    $hostSource -notmatch '轮询同步') {
+    throw 'REGRESSION_FAIL: OpenCode UI must show a live countdown and second-level polling time'
+}
 $bridgeSource = Get-Content -LiteralPath (Join-Path $root 'opencode_go_browser_bridge.ps1') -Raw -Encoding UTF8
 if ($bridgeSource -notmatch 'Request-HostRefresh' -or
     $bridgeSource -notmatch "refresh\|opencode") {
     throw 'REGRESSION_FAIL: OpenCode browser bridge writes must request an immediate host repaint'
+}
+if ($bridgeSource -notmatch 'resetAt' -or
+    $bridgeSource -notmatch 'resetInSec') {
+    throw 'REGRESSION_FAIL: OpenCode browser bridge must preserve reset metadata'
 }
 Write-Output 'QUOTADOCK_SELFTEST_PASS'
