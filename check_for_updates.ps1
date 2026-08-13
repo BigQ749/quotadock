@@ -2,7 +2,9 @@
     [switch]$ShowDialog,
     [switch]$SelfTest,
     [switch]$Force,
-    [switch]$Interactive
+    [switch]$Interactive,
+    [switch]$ResultOnly,
+    [string]$ResultPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,7 +47,7 @@ if ($SelfTest) {
     exit 0
 }
 
-if ($env:QUOTADOCK_DISABLE_UPDATE_CHECK -eq '1') {
+if ($env:QUOTADOCK_DISABLE_UPDATE_CHECK -eq '1' -and -not $Interactive -and -not $ResultOnly) {
     exit 0
 }
 
@@ -82,10 +84,36 @@ $latestVersion = $null
 if ($null -ne $release) {
     $latestVersion = Normalize-Version ([string]$release.tag_name)
 }
+$hasUpdate = $null -ne $latestVersion -and $latestVersion -gt $currentVersion
+
+function Write-UpdateResult {
+    if ([string]::IsNullOrWhiteSpace($ResultPath)) {
+        return
+    }
+    try {
+        $releaseUrl = if ($null -ne $release) { [string]$release.html_url } else { '' }
+        $payload = [ordered]@{
+            checkedAt      = [datetimeoffset]::Now.ToString('o')
+            currentVersion = $currentVersionText
+            latestVersion  = if ($null -ne $latestVersion) { $latestVersion.ToString() } else { '' }
+            hasUpdate      = [bool]$hasUpdate
+            releaseUrl     = $releaseUrl
+            checkError     = [string]$checkError
+        }
+        [System.IO.File]::WriteAllText($ResultPath, ($payload | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
+    }
+    catch {
+        # The parent process will report that no result was returned.
+    }
+}
+
+if ($ResultOnly) {
+    Write-UpdateResult
+    exit 0
+}
 if ((-not $ShowDialog) -or ($null -eq $latestVersion -and -not $Interactive) -or ($null -ne $latestVersion -and $latestVersion -le $currentVersion -and -not $Interactive)) {
     exit 0
 }
-$hasUpdate = $null -ne $latestVersion -and $latestVersion -gt $currentVersion
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing

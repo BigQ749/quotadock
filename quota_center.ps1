@@ -43,7 +43,31 @@ $customConfigPath = Join-Path $stateRoot 'custom_providers.json'
 $customDataRoot = Join-Path $stateRoot 'custom-data'
 $hiddenProviderPath = Join-Path $stateRoot 'quota_center_hidden.json'
 $centerErrorLog = Join-Path $env:TEMP 'quota-center-error.log'
-$powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+
+function Resolve-QuotaDockPowerShell {
+    $candidates = @()
+    $command = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Source)) {
+        $candidates += $command.Source
+    }
+
+    $programFiles = [Environment]::GetEnvironmentVariable('ProgramFiles')
+    $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+    if (-not [string]::IsNullOrWhiteSpace($programFiles)) {
+        $candidates += (Join-Path $programFiles 'PowerShell\7\pwsh.exe')
+    }
+    if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+        $candidates += (Join-Path $programFilesX86 'PowerShell\7\pwsh.exe')
+    }
+
+    $resolved = @($candidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) } | Select-Object -First 1)
+    if ($resolved.Count -eq 0) {
+        throw 'QuotaDock 需要 PowerShell 7+（pwsh.exe），但本机未找到。请先安装 PowerShell 7。'
+    }
+    return [string]$resolved[0]
+}
+
+$powershell = Resolve-QuotaDockPowerShell
 $appIconPath = Join-Path $root 'assets\app\QuotaDock.ico'
 
 $providers = [ordered]@{
@@ -223,6 +247,9 @@ $script:StateTimer = $null
 $script:PendingProviderActions = @{}
 $script:PendingProviderSince = @{}
 $script:UpdateCheckStarted = $false
+$script:UpdateCheckProcess = $null
+$script:UpdateCheckInProgress = $false
+$script:UpdateResultPath = Join-Path $env:TEMP ('quotadock-update-result-' + $PID + '.json')
 
 function Save-State {
     try {
@@ -319,9 +346,14 @@ function Set-Status {
     }
 }
 
+function Test-ProviderRegistered {
+    param([string]$Provider)
+    return $providers.Keys -contains $Provider
+}
+
 function Ensure-HostProcess {
     $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-        $_.Name -eq 'powershell.exe' -and $_.CommandLine -like '*quota_fusion_host.ps1*'
+        $_.Name -in @('pwsh.exe', 'powershell.exe') -and $_.CommandLine -like '*quota_fusion_host.ps1*'
     })
     if ($running.Count -gt 0) {
         return
@@ -370,17 +402,27 @@ function Invoke-QuotaDockUpdateCheck {
         Set-Status '更新模块不存在'
         return
     }
+    if ($script:UpdateCheckInProgress) {
+        Set-Status '更新检查仍在进行…'
+        return
+    }
     try {
-        Start-Process -FilePath $powershell -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @(
+        if (Test-Path -LiteralPath $script:UpdateResultPath) {
+            Remove-Item -LiteralPath $script:UpdateResultPath -Force -ErrorAction SilentlyContinue
+        }
+        $script:UpdateCheckProcess = Start-Process -FilePath $powershell -WindowStyle Hidden -WorkingDirectory $root -PassThru -ArgumentList @(
             '-NoProfile'
             '-ExecutionPolicy'
             'Bypass'
             '-File'
             $updateScript
-            '-ShowDialog'
             '-Force'
             '-Interactive'
-        ) | Out-Null
+            '-ResultPath'
+            $script:UpdateResultPath
+            '-ResultOnly'
+        )
+        $script:UpdateCheckInProgress = $true
         Set-Status '正在检查 QuotaDock 更新…'
     }
     catch {
@@ -481,17 +523,24 @@ function Sync-HostRuntimeState {
         $pending = if ($script:PendingProviderActions.ContainsKey($provider)) { [string]$script:PendingProviderActions[$provider] } else { '' }
         $pendingSince = if ($script:PendingProviderSince.ContainsKey($provider)) { $script:PendingProviderSince[$provider] } else { $null }
         $pendingAge = if ($pendingSince -is [datetime]) { ($now - $pendingSince.ToUniversalTime()).TotalSeconds } else { 0 }
+        $completionMessage = $null
         if ($isOpen -and $pending -eq 'opening') {
             $script:PendingProviderActions.Remove($provider)
             $script:PendingProviderSince.Remove($provider)
+            $pending = ''
+            $completionMessage = $providers[$provider].Title + ' 已打开'
         }
         elseif (-not $isOpen -and $pending -eq 'closing') {
             $script:PendingProviderActions.Remove($provider)
             $script:PendingProviderSince.Remove($provider)
+            $pending = ''
+            $completionMessage = $providers[$provider].Title + ' 已关闭'
         }
         elseif ($pending -ne '' -and $pendingAge -ge 8) {
             $script:PendingProviderActions.Remove($provider)
             $script:PendingProviderSince.Remove($provider)
+            $pending = ''
+            $completionMessage = $providers[$provider].Title + ' 操作已结束，当前为' + (Get-ProviderRuntimeCaption $provider)
         }
         $displayOpen = if ($pending -eq 'opening') { $true } elseif ($pending -eq 'closing') { $false } else { $isOpen }
         if ($script:ProviderChecks.ContainsKey($provider)) {
@@ -508,8 +557,77 @@ function Sync-HostRuntimeState {
             }
         }
         Update-ProviderVisual $provider
+        if (-not [string]::IsNullOrWhiteSpace($completionMessage)) {
+            Set-Status $completionMessage
+        }
     }
     Sync-TrayItems
+}
+
+function Show-UpdateResult {
+    if (-not (Test-Path -LiteralPath $script:UpdateResultPath)) {
+        return $false
+    }
+    try {
+        $result = Get-Content -LiteralPath $script:UpdateResultPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $current = [string](Get-JsonValue $result 'currentVersion')
+        $latest = [string](Get-JsonValue $result 'latestVersion')
+        $hasUpdate = [bool](Get-JsonValue $result 'hasUpdate')
+        $releaseUrl = [string](Get-JsonValue $result 'releaseUrl')
+        $checkError = [string](Get-JsonValue $result 'checkError')
+        if ([string]::IsNullOrWhiteSpace($current)) { $current = '未知' }
+        if (-not [string]::IsNullOrWhiteSpace($checkError)) {
+            $title = 'QuotaDock 更新检查失败'
+            $body = '当前版本：' + $current + [Environment]::NewLine + [Environment]::NewLine + '原因：' + $checkError
+            $icon = [System.Windows.Forms.MessageBoxIcon]::Warning
+        }
+        elseif ($hasUpdate) {
+            $title = '发现 QuotaDock 新版本'
+            $body = '当前版本：' + $current + [Environment]::NewLine + '最新版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '点击“是”打开 GitHub Release 下载页；不会静默安装。'
+            $icon = [System.Windows.Forms.MessageBoxIcon]::Information
+        }
+        else {
+            $title = 'QuotaDock 已是最新版'
+            $body = '当前版本：' + $current + [Environment]::NewLine + '已检查版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '目前不需要更新。'
+            $icon = [System.Windows.Forms.MessageBoxIcon]::Information
+        }
+        $buttons = if ($hasUpdate -and -not [string]::IsNullOrWhiteSpace($releaseUrl)) { [System.Windows.Forms.MessageBoxButtons]::YesNo } else { [System.Windows.Forms.MessageBoxButtons]::OK }
+        $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, $buttons, $icon)
+        if ($hasUpdate -and -not [string]::IsNullOrWhiteSpace($releaseUrl) -and $choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Start-Process $releaseUrl
+        }
+        Set-Status '更新检查已完成'
+        Remove-Item -LiteralPath $script:UpdateResultPath -Force -ErrorAction SilentlyContinue
+        return $true
+    }
+    catch {
+        Write-CenterError 'read-update-result' $_
+        Set-Status ('更新结果读取失败：' + $_.Exception.Message)
+        return $false
+    }
+}
+
+function Sync-UpdateCheckState {
+    if (-not $script:UpdateCheckInProgress) { return }
+    if (Show-UpdateResult) {
+        $script:UpdateCheckInProgress = $false
+        $script:UpdateCheckProcess = $null
+        return
+    }
+    if ($null -ne $script:UpdateCheckProcess) {
+        try {
+            if ($script:UpdateCheckProcess.HasExited) {
+                $script:UpdateCheckInProgress = $false
+                $script:UpdateCheckProcess = $null
+                Set-Status '更新检查未返回结果'
+            }
+        }
+        catch {
+            $script:UpdateCheckInProgress = $false
+            $script:UpdateCheckProcess = $null
+            Set-Status ('更新检查状态异常：' + $_.Exception.Message)
+        }
+    }
 }
 
 function Sync-TrayItems {
@@ -1035,7 +1153,7 @@ function Set-ProviderEnabled {
 
 function Remove-ProviderCard {
     param([string]$Provider)
-    if (-not $providers.ContainsKey($Provider)) {
+    if (-not (Test-ProviderRegistered $Provider)) {
         return
     }
     $isBuiltIn = $builtInProviderIds -contains $Provider
@@ -1098,13 +1216,13 @@ function New-ProviderContextMenu {
     $menu.ShowImageMargin = $false
     $menu.ShowCheckMargin = $false
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(12, 10, 12, 10)
-    $menu.MinimumSize = New-Object System.Drawing.Size(250, 0)
-    $menu.Font = New-UiFont 'Microsoft YaHei UI' 14
+    $menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
+    $menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
+    $menu.Font = New-UiFont 'Microsoft YaHei UI' 16
 
     $titleItem = New-Object System.Windows.Forms.ToolStripMenuItem($providers[$Provider].Title)
     $titleItem.Enabled = $false
-    $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 14 ([System.Drawing.FontStyle]::Bold)
+    $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 16 ([System.Drawing.FontStyle]::Bold)
     [void]$menu.Items.Add($titleItem)
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
@@ -1119,6 +1237,12 @@ function New-ProviderContextMenu {
     $removeItem = New-Object System.Windows.Forms.ToolStripMenuItem($removeText)
     $removeItem.Add_Click({ Remove-ProviderCard $Provider }.GetNewClosure())
     [void]$menu.Items.Add($removeItem)
+    foreach ($item in @($menu.Items)) {
+        if ($item -is [System.Windows.Forms.ToolStripMenuItem]) {
+            $item.Font = $menu.Font
+            $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
+        }
+    }
     $menu.Add_Opened({
         Set-ToolStripRoundedRegion $menu 14
     }.GetNewClosure())
@@ -1133,7 +1257,7 @@ function Show-ProviderMenu {
         [string]$Provider,
         [System.Windows.Forms.Control]$Source
     )
-    if (-not $providers.ContainsKey($Provider) -or $null -eq $Source) {
+    if (-not (Test-ProviderRegistered $Provider) -or $null -eq $Source) {
         return
     }
     if ($Source.IsDisposed) {
@@ -1497,9 +1621,9 @@ $menu.ForeColor = $foreground
 $menu.ShowImageMargin = $false
 $menu.ShowCheckMargin = $true
 $menu.AutoSize = $true
-$menu.Padding = New-Object System.Windows.Forms.Padding(12, 10, 12, 10)
-$menu.MinimumSize = New-Object System.Drawing.Size(280, 0)
-$menu.Font = New-UiFont 'Microsoft YaHei UI' 14
+$menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
+$menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
+$menu.Font = New-UiFont 'Microsoft YaHei UI' 16
 
 $menuTitle = New-Object System.Windows.Forms.ToolStripMenuItem('QuotaDock  ·  浮窗控制')
 $menuTitle.Enabled = $false
@@ -1552,6 +1676,13 @@ $refreshItem.Add_Click({ Sync-HostRuntimeState; Set-Status '运行状态已刷�
 $exitItem = New-Object System.Windows.Forms.ToolStripMenuItem('退出 QuotaDock')
 [void]$menu.Items.Add($exitItem)
 
+foreach ($item in @($menu.Items)) {
+    if ($item -is [System.Windows.Forms.ToolStripMenuItem]) {
+        $item.Font = $menu.Font
+        $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
+    }
+}
+
 $notify = New-Object System.Windows.Forms.NotifyIcon
 if (Test-Path -LiteralPath $appIconPath) {
     $form.Icon = New-Object System.Drawing.Icon($appIconPath)
@@ -1598,6 +1729,7 @@ $script:StateTimer = $stateTimer
 $stateTimer.Add_Tick({
     try {
         Sync-HostRuntimeState
+        Sync-UpdateCheckState
     }
     catch {
         Write-CenterError 'runtime-state-timer' $_

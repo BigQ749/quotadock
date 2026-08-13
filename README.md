@@ -31,9 +31,9 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 | 设备 | 下载 | 状态 |
 |---|---|---|
 | Windows 10/11 x64 | `QuotaDock-Setup-X.Y.Z.exe` | ✅ 主要验证目标 |
-| Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；请使用相同版本的 Windows PowerShell |
+| Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；请使用 PowerShell 7+ |
 | Windows ARM64 | 暂无原生包 | ⚠️ 未作为发行版承诺；不要把 x64 安装包称为 ARM 原生版 |
-| macOS / Linux | 暂不提供 | 🧭 PowerShell 5.1 + WinForms 版本尚未跨平台 |
+| macOS / Linux | 暂不提供 | 🧭 PowerShell 7+ + WinForms 版本尚未跨平台 |
 
 安装器支持：选择安装目录、阅读 MIT 许可证、当前用户范围安装、不要求管理员权限、创建开始菜单/桌面快捷方式，以及可选的“登录 Windows 时自动启动”。安装不会删除 `%LOCALAPPDATA%\QuotaDock` 中的额度配置和凭据。
 
@@ -100,7 +100,7 @@ $env:QUOTADOCK_OPENCODE_DATA = 'C:\path\to\opencode_go.json'
 如果希望关闭 Chrome 后仍能更新，可配置后台同步：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_background.ps1 -WorkspaceId wrk_xxx
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_background.ps1 -WorkspaceId wrk_xxx
 ```
 
 脚本隐藏输入 `auth` Cookie，并使用当前 Windows 用户范围 DPAPI 加密保存。不要把 Cookie 粘贴到仓库、Issue、截图或聊天记录中。
@@ -119,19 +119,19 @@ QuotaDock 的更新分成三步：
 
 ```powershell
 Set-Location .\quotadock
-powershell -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 ```
 
 本地构建需要 Inno Setup 6 的 `ISCC.exe`：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\packaging\build.ps1 -Clean
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\packaging\build.ps1 -Clean
 ```
 
 提交前运行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
 ```
 
 ## 架构与扩展

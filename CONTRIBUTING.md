@@ -2,12 +2,12 @@
 
 ## 开始前
 
-先阅读 [`llms.txt`](llms.txt)、[`docs/architecture.md`](docs/architecture.md) 和 [`SECURITY.md`](SECURITY.md)。这是一个 Windows PowerShell + WinForms 项目，合体窗口必须保持“一个真实宿主窗口”的模型。
+先阅读 [`llms.txt`](llms.txt)、[`docs/architecture.md`](docs/architecture.md) 和 [`SECURITY.md`](SECURITY.md)。这是一个 PowerShell 7+ + WinForms 的 Windows 项目，合体窗口必须保持“一个真实宿主窗口”的模型。
 
 ## 提交前检查
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
 ```
 
 如果改动了拖拽、合体、藏边、关闭或托盘状态，请提供实际桌面截图和复现步骤；静态检查不能替代真实窗口验收。

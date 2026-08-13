@@ -39,7 +39,7 @@ function Resolve-ConfiguredPath {
 # 停掉旧版独立浮窗和旧大融合面板，避免新旧两套窗口同时存在
 Get-CimInstance Win32_Process |
     Where-Object {
-        $_.ProcessId -ne $PID -and $_.Name -eq 'powershell.exe' -and
+        $_.ProcessId -ne $PID -and $_.Name -in @('pwsh.exe', 'powershell.exe') -and
         ($_.CommandLine -like '*quota_small_widget.ps1*' -or $_.CommandLine -like '*quota_fusion_desktop.ps1*') -and
         $_.CommandLine -notlike '*launch_quota_small_widget.ps1*' -and
         $_.CommandLine -notlike '*quota_fusion_host.ps1*'
@@ -52,7 +52,7 @@ if ($Provider -eq 'codex') {
         Where-Object { $_.CommandLine -like '*codex_quota_fetch_loop.ps1*' } |
         Select-Object -First 1
     if ($null -eq $loop -and (Test-Path -LiteralPath $loopPath)) {
-        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
+        Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
     }
 }
 elseif ($Provider -eq 'grok') {
@@ -87,7 +87,7 @@ elseif ($Provider -eq 'opencode') {
             } |
             Select-Object -First 1
         if ($null -eq $sync -and (Test-Path -LiteralPath $backgroundPath)) {
-            Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath)
+            Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath)
         }
     }
     else {
@@ -105,11 +105,11 @@ elseif ($Provider -eq 'opencode') {
             } |
             Select-Object -First 1
         if ($null -eq $bridge -and (Test-Path -LiteralPath $bridgePath)) {
-            Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $bridgePath)
+            Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $bridgePath)
         }
     }
 }
 
 if (-not $SkipHost -and (Test-Path -LiteralPath $hostPath)) {
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $hostPath, '-Provider', $Provider)
+    Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $hostPath, '-Provider', $Provider)
 }

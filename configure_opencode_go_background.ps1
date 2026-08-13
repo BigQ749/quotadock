@@ -81,7 +81,11 @@ try {
     Move-Item -LiteralPath $tmpPath -Destination $credentialPath -Force
 
     $syncPath = Join-Path $baseDir 'opencode_go_background_sync.ps1'
-    $powershellPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $powershellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $powershellCommand -or [string]::IsNullOrWhiteSpace($powershellCommand.Source)) {
+        throw 'QuotaDock 需要 PowerShell 7+（pwsh.exe），但本机未找到。请先安装 PowerShell 7。'
+    }
+    $powershellPath = $powershellCommand.Source
     Write-Output '凭证已按当前 Windows 用户范围加密保存。正在执行一次后台直连测试……'
     & $powershellPath -NoProfile -ExecutionPolicy Bypass -File $syncPath -Once
     if ($LASTEXITCODE -ne 0) {

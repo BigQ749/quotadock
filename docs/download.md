@@ -7,13 +7,14 @@ QuotaDock 当前是 Windows-first 桌面应用。下载页只发布已经实际�
 | 系统 | 文件 | 说明 |
 |---|---|---|
 | Windows 10/11 x64 | `QuotaDock-Setup-X.Y.Z.exe` | 首选版本；在 Windows runner 构建并发布 |
-| Windows x86 | 同一个安装包 | Inno Setup 使用 x86 兼容模式；脚本依赖 Windows PowerShell 5.1 |
+| Windows x86 | 同一个安装包 | Inno Setup 使用 x86 兼容模式；脚本依赖 PowerShell 7+ |
 | Windows ARM64 | 暂无原生安装包 | 只有完成 ARM runner、安装测试和截图验收后才会发布 |
-| macOS/Linux | 暂不支持 | 当前 UI 使用 Windows PowerShell 5.1 + WinForms |
+| macOS/Linux | 暂不支持 | 当前 UI 使用 PowerShell 7+ + WinForms |
 
 不要把 `SHA256SUMS.txt` 当作安装器。它用于下载后校验：
 
 ```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -Command '$PSVersionTable.PSVersion'
 Get-FileHash .\QuotaDock-Setup-X.Y.Z.exe -Algorithm SHA256
 Get-Content .\SHA256SUMS.txt
 ```
@@ -33,4 +34,4 @@ Get-Content .\SHA256SUMS.txt
 
 ## 为什么没有 Mac/Linux 下载项
 
-这是当前实现边界，不是遗漏：WinForms、Windows PowerShell 5.1、用户启动项和 Inno Setup 都是 Windows 方案。跨平台版本需要另做 UI 宿主、安装器、更新器和真实平台验收；在这之前，发布页不会放无法运行的空链接。
+这是当前实现边界，不是遗漏：WinForms、PowerShell 7+、用户启动项和 Inno Setup 都是 Windows 方案。跨平台版本需要另做 UI 宿主、安装器、更新器和真实平台验收；在这之前，发布页不会放无法运行的空链接。

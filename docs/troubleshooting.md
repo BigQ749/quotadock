@@ -5,7 +5,7 @@
 先用 PowerShell 前台运行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 ```
 
 再运行 `tests/selftest.ps1`。检查 `%TEMP%\quota-center-error.log`、`%TEMP%\quota-fusion-host-error.log` 和 `%TEMP%\quota-fusion-host-paint.log`，日志中不应包含 Cookie 或完整页面 HTML。

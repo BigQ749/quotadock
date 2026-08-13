@@ -1651,8 +1651,8 @@ function New-FloatContextMenu {
     $menu.BackColor = [System.Drawing.Color]::FromArgb(36, 42, 52)
     $menu.ForeColor = [System.Drawing.Color]::FromArgb(239, 243, 249)
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(14, 12, 14, 12)
-    $menu.MinimumSize = New-Object System.Drawing.Size(320, 0)
+    $menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
+    $menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
     $menu.Font = New-HostFont 'Microsoft YaHei UI' 16
     $menu.Margin = New-Object System.Windows.Forms.Padding(6, 6, 6, 6)
     $renderer = New-Object System.Windows.Forms.ToolStripProfessionalRenderer
@@ -1666,7 +1666,7 @@ function New-FloatContextMenu {
     $closeCardMenu = New-Object System.Windows.Forms.ToolStripMenuItem('关闭其中一张额度卡片')
     foreach ($item in @($keepItem, $resumeItem, $minimizeItem, $closeItem, $closeCardMenu)) {
         $item.Font = $menu.Font
-        $item.Padding = New-Object System.Windows.Forms.Padding(12, 9, 12, 9)
+        $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
     }
     [void]$menu.Items.Add($keepItem)
     [void]$menu.Items.Add($resumeItem)
@@ -1716,7 +1716,7 @@ function New-FloatContextMenu {
                 $cardTitle = [string]$targetCard.Profile.Title
                 $cardItem = New-Object System.Windows.Forms.ToolStripMenuItem(('关闭 ' + $cardTitle + ' 额度'))
                 $cardItem.Font = $menu.Font
-                $cardItem.Padding = New-Object System.Windows.Forms.Padding(12, 9, 12, 9)
+                $cardItem.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
                 $cardItem.Add_Click({
                     if ($null -ne $targetForm -and -not $targetForm.IsDisposed -and $null -ne $targetCard) {
                         Remove-CardFromFused $targetForm $targetCard $true

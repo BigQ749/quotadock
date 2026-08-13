@@ -1,6 +1,13 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+$powershellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($null -eq $powershellCommand -or [string]::IsNullOrWhiteSpace($powershellCommand.Source)) {
+    throw 'SELFTEST_ENV_FAIL: PowerShell 7+（pwsh.exe）未找到。'
+}
+$powershell = $powershellCommand.Source
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    throw ('SELFTEST_ENV_FAIL: 必须使用 PowerShell 7+，当前为 ' + $PSVersionTable.PSVersion)
+}
 
 $privacyPatterns = @(
     'Fe26\.[A-Za-z0-9._-]{20,}',
@@ -34,6 +41,13 @@ Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
 
 $centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -Raw -Encoding UTF8
 $hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
+$launcherSource = (Get-ChildItem -LiteralPath $root -Filter 'launch_*.vbs' -File | Get-Content -Raw) -join "`n"
+if ($centerSource -notmatch 'Resolve-QuotaDockPowerShell' -or $centerSource -notmatch 'pwsh\.exe') {
+    throw 'REGRESSION_FAIL: QuotaDock must resolve and launch PowerShell 7+ via pwsh.exe'
+}
+if ($launcherSource -match 'WindowsPowerShell|powershell\.exe' -or $launcherSource -notmatch 'PowerShell\\7\\pwsh\.exe') {
+    throw 'REGRESSION_FAIL: VBS launchers must use PowerShell 7+ and must not default to Windows PowerShell 5.1'
+}
 if ($centerSource -match 'ShowWithoutActivation') {
     throw 'REGRESSION_FAIL: center must not assign unsupported ShowWithoutActivation'
 }
@@ -60,5 +74,20 @@ if ($hostSource -notmatch '\$script:ClosingForms\[\$Form\] = \$true') {
 }
 if ($centerSource -notmatch '\$updateButton\.Text' -or $centerSource -notmatch "'-Interactive'") {
     throw 'REGRESSION_FAIL: manual update check must be an explicit interactive action'
+}
+if ($centerSource -match '\$providers\.ContainsKey') {
+    throw 'REGRESSION_FAIL: ordered provider registry must use Keys -contains, not ContainsKey'
+}
+if ($centerSource -notmatch '\$script:UpdateResultPath' -or $centerSource -notmatch 'Sync-UpdateCheckState') {
+    throw 'REGRESSION_FAIL: manual update check must return and display a result'
+}
+if ($centerSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $centerSource -notmatch "New-UiFont 'Microsoft YaHei UI' 16") {
+    throw 'REGRESSION_FAIL: center context menus must use the enlarged menu scale'
+}
+if ($centerSource -notmatch '已打开' -or $centerSource -notmatch '已关闭') {
+    throw 'REGRESSION_FAIL: provider actions must expose completion status'
+}
+if ($hostSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $hostSource -notmatch "New-HostFont 'Microsoft YaHei UI' 16") {
+    throw 'REGRESSION_FAIL: floater context menu must use the enlarged menu scale'
 }
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

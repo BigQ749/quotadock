@@ -11,6 +11,7 @@
 ## 发布
 
 ```powershell
+$PSVersionTable.PSVersion
 $version = (Get-Content .\VERSION -Raw).Trim()
 git add .
 git commit -m "release: v$version"

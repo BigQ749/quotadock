@@ -1,6 +1,6 @@
 # QuotaDock AI-readable project index
 
-QuotaDock is a Windows PowerShell + WinForms desktop quota dashboard. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, and custom providers.
+QuotaDock is a PowerShell 7+ + WinForms Windows desktop quota dashboard. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, and custom providers.
 
 ## Core facts
 
