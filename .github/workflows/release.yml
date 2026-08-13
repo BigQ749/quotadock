@@ -39,8 +39,26 @@ jobs:
       - name: Create checksum
         shell: pwsh
         run: |
-          $installer = Get-ChildItem dist\QuotaDock-Setup-*.exe | Select-Object -First 1
-          (Get-FileHash $installer.FullName -Algorithm SHA256).Hash + "  " + $installer.Name | Set-Content dist\SHA256SUMS.txt
+          $payload = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in @('.exe', '.zip') })
+          if ($payload.Count -lt 2 -or -not ($payload.Name -like 'QuotaDock-Setup-*.exe')) {
+            throw 'Release payload must contain both the Windows installer and the portable/update ZIP.'
+          }
+          $lines = foreach ($file in $payload) {
+            (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + "  " + $file.Name
+          }
+          $lines | Set-Content dist\SHA256SUMS.txt -Encoding UTF8
+
+      - name: Verify installer payload
+        shell: pwsh
+        run: |
+          $version = $env:QUOTADOCK_VERSION
+          $installer = Join-Path $pwd "dist\QuotaDock-Setup-$version.exe"
+          $portable = Join-Path $pwd "dist\QuotaDock-v$version.zip"
+          if (-not (Test-Path -LiteralPath $installer)) { throw "Missing installer: $installer" }
+          if (-not (Test-Path -LiteralPath $portable)) { throw "Missing portable/update ZIP: $portable" }
+          if ((Get-Item -LiteralPath $installer).Length -lt 100KB) { throw 'Installer is unexpectedly small.' }
+          Write-Output "INSTALLER=$installer"
+          Write-Output "PORTABLE=$portable"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -54,5 +72,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $files = Get-ChildItem dist\*
-          gh release create $env:GITHUB_REF_NAME $files.FullName --title "QuotaDock $env:QUOTADOCK_VERSION · Windows 首发" --generate-notes
+          $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in @('.exe', '.zip', '.txt') })
+          $notes = Join-Path $pwd "docs\releases\v$env:QUOTADOCK_VERSION.md"
+          if (-not (Test-Path -LiteralPath $notes)) { throw "Missing release notes: $notes" }
+          $args = @(
+            'release', 'create', $env:GITHUB_REF_NAME,
+            '--repo', $env:GITHUB_REPOSITORY,
+            '--verify-tag',
+            '--title', "QuotaDock $env:QUOTADOCK_VERSION · Windows 首发",
+            '--notes-file', $notes
+          )
+          $args += @($files.FullName)
+          & gh @args
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE" }

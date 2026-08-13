@@ -48,8 +48,8 @@ try {
     if (Test-Path -LiteralPath $manifestPath) {
         try { $existingNotes = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).notes) } catch {}
     }
-    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.8') {
-        $existingNotes = '修复 OpenCode Go 同步时间时区显示：UTC 数据按本机时区显示，并保留动态重置倒计时。'
+    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.9') {
+        $existingNotes = '新增标准 Windows 安装器：支持选择安装目录、快捷方式、可选开机启动，并将 ZIP 标记为便携版/更新包。'
     }
     $manifest = [ordered]@{
         version      = $version

@@ -1,9 +1,9 @@
 {
-  "version": "0.1.8",
+  "version": "0.1.9",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.8.zip",
-  "sha256": "38156b3dd36791dc22c7ef456962190b5a40928686499a867400f2f3e0ee48ad",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.8",
-  "notes": "修复 OpenCode Go 同步时间时区显示：UTC 数据按本机时区显示，并保留动态重置倒计时。"
+  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.9.zip",
+  "sha256": "49dbf7b7a0aae0a7aebddcf343ebd8b941e4c95c5a5719167d80d03788f48560",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.9",
+  "notes": "新增标准 Windows 安装器：支持选择安装目录、快捷方式、可选开机启动，并将 ZIP 标记为便携版/更新包。"
 }

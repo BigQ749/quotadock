@@ -26,7 +26,7 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 
 ## 下载与系统支持
 
-当前公开发行版是 Windows 桌面应用。请先看 [下载选择指南](docs/download.md)，再从 [GitHub Releases](https://github.com/BigQ749/quotadock/releases) 下载对应版本。
+当前公开发行版是 Windows 桌面应用。普通用户请在 [GitHub Releases](https://github.com/BigQ749/quotadock/releases) 下载 `QuotaDock-Setup-X.Y.Z.exe`；`QuotaDock-vX.Y.Z.zip` 是便携/更新包，不是安装向导。请先看 [下载选择指南](docs/download.md)。
 
 | 设备 | 下载 | 状态 |
 |---|---|---|
@@ -50,9 +50,9 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 ## 安装
 
 1. 打开 [Releases](https://github.com/BigQ749/quotadock/releases)。
-2. 下载 `QuotaDock-Setup-*.exe` 和同版本的 `SHA256SUMS.txt`。
-3. 校验 SHA-256 后运行安装器，按向导选择目录、许可证和开机启动选项。
-4. 通过桌面/开始菜单快捷方式启动 QuotaDock。
+2. 下载 `QuotaDock-Setup-*.exe` 和同版本的 `SHA256SUMS.txt`；不要下载源码压缩包作为安装程序。
+3. 校验 SHA-256 后运行安装器，按向导选择安装盘/目录、阅读许可证、选择快捷方式和开机启动。
+4. 通过桌面/开始菜单快捷方式启动 QuotaDock；安装目录里的 VBS 不需要手动操作。
 
 安装器由 `.github/workflows/release.yml` 在 Windows runner 上使用 Inno Setup 构建；源码仓库不提交编译机的个人数据。
 

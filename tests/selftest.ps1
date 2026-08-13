@@ -209,4 +209,25 @@ if ($bridgeSource -notmatch 'resetAt' -or
     $bridgeSource -notmatch 'resetInSec') {
     throw 'REGRESSION_FAIL: OpenCode browser bridge must preserve reset metadata'
 }
+$installerSource = Get-Content -LiteralPath (Join-Path $root 'packaging\QuotaDock.iss') -Raw -Encoding UTF8
+$workflowSource = Get-Content -LiteralPath (Join-Path $root '.github\workflows\release.yml') -Raw -Encoding UTF8
+$downloadGuide = Get-Content -LiteralPath (Join-Path $root 'docs\download.md') -Raw -Encoding UTF8
+if ($installerSource -notmatch 'LicenseFile=' -or
+    $installerSource -notmatch 'DefaultDirName=\{localappdata\}\\Programs\\QuotaDock' -or
+    $installerSource -notmatch 'PrivilegesRequired=lowest' -or
+    $installerSource -notmatch 'Name: "autostart"' -or
+    $installerSource -notmatch 'QuotaDock-Setup-\{#AppVersion\}' -or
+    $installerSource -notmatch 'PowerShellMissing') {
+    throw 'REGRESSION_FAIL: Inno Setup must expose license, directory, startup option and PowerShell dependency guidance'
+}
+if ($workflowSource -notmatch 'QuotaDock-Setup-\*\.exe' -or
+    $workflowSource -notmatch 'QuotaDock-v\$version\.zip' -or
+    $workflowSource -notmatch 'gh @args') {
+    throw 'REGRESSION_FAIL: release workflow must publish both installer and portable/update ZIP'
+}
+if ($downloadGuide -notmatch 'QuotaDock-Setup-X\.Y\.Z\.exe' -or
+    $downloadGuide -notmatch '便携/更新' -or
+    $downloadGuide -notmatch '\.vbs') {
+    throw 'REGRESSION_FAIL: download guide must distinguish installer, ZIP and internal VBS launcher'
+}
 Write-Output 'QUOTADOCK_SELFTEST_PASS'
