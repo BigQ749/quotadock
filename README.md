@@ -108,6 +108,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_background
 ```
 
 脚本隐藏输入 `auth` Cookie，并使用当前 Windows 用户范围 DPAPI 加密保存。不要把 Cookie 粘贴到仓库、Issue、截图或聊天记录中。
+0.1.5 起也兼容读取旧版 `%LOCALAPPDATA%\QuotaFusionDesktop\opencode_go_credentials.json`，升级后不需要立刻重复复制 Cookie。
 
 ## 更新机制
 

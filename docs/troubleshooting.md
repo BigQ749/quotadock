@@ -18,6 +18,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 
 - Chrome 桥接：确认扩展已加载、页面 URL 匹配 `https://opencode.ai/workspace/*/go`，本地桥接端口为 `45731`。
 - 后台模式：确认 `opencode_go_credentials.json` 存在，并重新运行配置脚本；不要把 Cookie 放进命令行参数。
+- 旧版凭证可能位于 `%LOCALAPPDATA%\QuotaFusionDesktop\opencode_go_credentials.json`；新版会兼容读取该路径，不需要立刻重复复制 Cookie。
 - HTTP 401/403 通常表示会话过期或 Cookie 不再被官方页面接受，不是 UI 刷新问题。
 - 页面字段变化会导致解析器自测或同步失败，应更新解析器并增加 fixture，不要把异常当作有效额度。
 

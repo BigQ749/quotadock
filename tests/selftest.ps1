@@ -168,7 +168,8 @@ if ($launcherSource -notmatch 'Keep-One-QuotaDockSyncProcess' -or
 }
 $backgroundSource = Get-Content -LiteralPath (Join-Path $root 'opencode_go_background_sync.ps1') -Raw -Encoding UTF8
 if ($backgroundSource -notmatch 'Write-QuotaFailureState' -or
-    $backgroundSource -notmatch 'QuotaDockOpenCodeGoWriteMutex') {
+    $backgroundSource -notmatch 'QuotaDockOpenCodeGoWriteMutex' -or
+    $backgroundSource -notmatch 'QuotaFusionDesktop\\opencode_go_credentials') {
     throw 'REGRESSION_FAIL: OpenCode background sync must expose failure state and use a single writer lock'
 }
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

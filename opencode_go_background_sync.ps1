@@ -10,6 +10,7 @@ $stateDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Qu
 $sourceConfigPath = Join-Path $stateDir 'quota_sources.json'
 $dataPath = Join-Path $stateDir 'data\opencode_go.json'
 $credentialPath = Join-Path $stateDir 'opencode_go_credentials.json'
+$legacyCredentialPath = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'QuotaFusionDesktop\opencode_go_credentials.json'
 $syncLog = Join-Path $env:TEMP 'quotadock-opencode-background.log'
 $mutexName = 'Local\QuotaDockOpenCodeGoWriteMutex'
 $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36'
@@ -112,12 +113,22 @@ function Unprotect-CurrentUserText {
     return [Text.Encoding]::UTF8.GetString($bytes)
 }
 
+function Get-OpenCodeCredentialPath {
+    foreach ($candidate in @($credentialPath, $legacyCredentialPath)) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+    return $credentialPath
+}
+
 function Get-OpenCodeCredential {
-    if (-not (Test-Path -LiteralPath $credentialPath)) {
+    $activeCredentialPath = Get-OpenCodeCredentialPath
+    if (-not (Test-Path -LiteralPath $activeCredentialPath)) {
         throw "未配置 OpenCode Go 后台凭证：$credentialPath"
     }
 
-    $config = Get-Content -Raw -LiteralPath $credentialPath | ConvertFrom-Json
+    $config = Get-Content -Raw -LiteralPath $activeCredentialPath | ConvertFrom-Json
     $workspaceId = [string]$config.workspaceId
     $protectedCookie = [string]$config.authCookieProtected
     if ([string]::IsNullOrWhiteSpace($workspaceId) -or [string]::IsNullOrWhiteSpace($protectedCookie)) {
@@ -414,7 +425,7 @@ if ($SelfTest) {
     exit 0
 }
 
-if (-not (Test-Path -LiteralPath $credentialPath)) {
+if (-not (Test-Path -LiteralPath (Get-OpenCodeCredentialPath))) {
     Write-BackgroundLog 'not-started: credentials are not configured'
     try {
         Write-QuotaFailureState '未配置 OpenCode Go 后台凭证'

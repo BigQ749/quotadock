@@ -128,7 +128,11 @@ elseif ($Provider -eq 'grok') {
     }
 }
 elseif ($Provider -eq 'opencode') {
-    $credentialPath = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'QuotaDock\opencode_go_credentials.json'
+    $credentialCandidates = @(
+        (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'QuotaDock\opencode_go_credentials.json'),
+        (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'QuotaFusionDesktop\opencode_go_credentials.json')
+    )
+    $credentialPath = $credentialCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
     $backgroundPath = Join-Path $root 'opencode_go_background_sync.ps1'
     if (Test-Path -LiteralPath $credentialPath) {
         Get-CimInstance Win32_Process |
