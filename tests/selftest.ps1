@@ -147,4 +147,28 @@ if ($updateSource -notmatch 'Get-LatestReleaseFromManifest' -or
 if ($centerSource -notmatch 'GitHub 更新接口暂时限流') {
     throw 'REGRESSION_FAIL: rate-limit update results must use a non-error informational message'
 }
+$launcherSource = Get-Content -LiteralPath (Join-Path $root 'launch_quota_small_widget.ps1') -Raw -Encoding UTF8
+if ($hostSource -notmatch 'D:\\AI\\codex-quota-desktop\\codex_quota_live\.json' -or
+    $hostSource -notmatch 'D:\\grok-weekly-quota-widget\\data\.json' -or
+    $hostSource -notmatch 'opencode_go_live\.json') {
+    throw 'REGRESSION_FAIL: live provider paths must be explicit fallbacks, not example data'
+}
+if ($hostSource -notmatch 'Get-ActiveQuotaDataPath' -or
+    $hostSource -notmatch 'ExplicitDataSources') {
+    throw 'REGRESSION_FAIL: host must refresh the active local data path without overriding explicit configuration'
+}
+if ($hostSource -notmatch '数据已过期' -or
+    $hostSource -notmatch '同步失败' -or
+    $hostSource -notmatch 'last_success_at') {
+    throw 'REGRESSION_FAIL: provider status must distinguish stale data and failed attempts'
+}
+if ($launcherSource -notmatch 'Keep-One-QuotaDockSyncProcess' -or
+    $launcherSource -notmatch 'Sort-Object CreationDate, ProcessId') {
+    throw 'REGRESSION_FAIL: provider launch must collapse duplicate sync processes'
+}
+$backgroundSource = Get-Content -LiteralPath (Join-Path $root 'opencode_go_background_sync.ps1') -Raw -Encoding UTF8
+if ($backgroundSource -notmatch 'Write-QuotaFailureState' -or
+    $backgroundSource -notmatch 'QuotaDockOpenCodeGoWriteMutex') {
+    throw 'REGRESSION_FAIL: OpenCode background sync must expose failure state and use a single writer lock'
+}
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

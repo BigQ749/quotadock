@@ -7,6 +7,10 @@ $ErrorActionPreference = 'SilentlyContinue'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $hostPath = Join-Path $root 'quota_fusion_host.ps1'
 $sourceConfigPath = Join-Path $env:LOCALAPPDATA 'QuotaDock\quota_sources.json'
+$powershell7 = (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if ([string]::IsNullOrWhiteSpace($powershell7)) {
+    $powershell7 = 'pwsh.exe'
+}
 
 function Read-QuotaDockSourceConfig {
     if (-not (Test-Path -LiteralPath $sourceConfigPath)) {
@@ -36,6 +40,57 @@ function Resolve-ConfiguredPath {
     return [Environment]::ExpandEnvironmentVariables($value.Trim())
 }
 
+function Get-QuotaDockSyncProcesses {
+    param([string]$Pattern)
+    return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.ProcessId -ne $PID -and
+            $_.Name -in @('pwsh.exe', 'powershell.exe', 'python.exe', 'pythonw.exe') -and
+            [string]$_.CommandLine -like $Pattern
+        } |
+        Sort-Object CreationDate, ProcessId)
+}
+
+function Keep-One-QuotaDockSyncProcess {
+    param(
+        [string]$Pattern,
+        [string]$ScriptPath,
+        [string]$ExpectedProcessName
+    )
+    $items = @(Get-QuotaDockSyncProcesses $Pattern)
+    $valid = New-Object System.Collections.ArrayList
+    $lastWriteUtc = if (Test-Path -LiteralPath $ScriptPath -PathType Leaf) {
+        (Get-Item -LiteralPath $ScriptPath).LastWriteTimeUtc
+    }
+    foreach ($item in $items) {
+        $isCurrent = ($ExpectedProcessName -eq '' -or [string]$item.Name -eq $ExpectedProcessName)
+        if ($isCurrent -and $null -ne $lastWriteUtc) {
+            try {
+                $startUtc = (Get-Process -Id ([int]$item.ProcessId) -ErrorAction Stop).StartTime.ToUniversalTime()
+                $isCurrent = $startUtc -ge $lastWriteUtc
+            }
+            catch {
+                $isCurrent = $false
+            }
+        }
+        if ($isCurrent) {
+            [void]$valid.Add($item)
+        }
+        else {
+            Stop-Process -Id ([int]$item.ProcessId) -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($valid.Count -gt 1) {
+        foreach ($extra in @($valid | Select-Object -Skip 1)) {
+            Stop-Process -Id ([int]$extra.ProcessId) -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($valid.Count -gt 0) {
+        return $valid[0]
+    }
+    return $null
+}
+
 # 停掉旧版独立浮窗和旧大融合面板，避免新旧两套窗口同时存在
 Get-CimInstance Win32_Process |
     Where-Object {
@@ -48,18 +103,20 @@ Get-CimInstance Win32_Process |
 
 if ($Provider -eq 'codex') {
     $loopPath = Resolve-ConfiguredPath 'QUOTADOCK_CODEX_SYNC' 'codexSyncScript'
-    $loop = Get-CimInstance Win32_Process |
-        Where-Object { $_.CommandLine -like '*codex_quota_fetch_loop.ps1*' } |
-        Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace($loopPath)) {
+        $loopPath = 'D:\AI\codex-quota-desktop\codex_quota_fetch_loop.ps1'
+    }
+    $loop = Keep-One-QuotaDockSyncProcess '*codex_quota_fetch_loop.ps1*' $loopPath 'pwsh.exe'
     if ($null -eq $loop -and (Test-Path -LiteralPath $loopPath)) {
-        Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
+        Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
     }
 }
 elseif ($Provider -eq 'grok') {
     $monitorPath = Resolve-ConfiguredPath 'QUOTADOCK_GROK_SYNC' 'grokSyncScript'
-    $sync = Get-CimInstance Win32_Process |
-        Where-Object { $_.CommandLine -like '*grok-weekly-quota-widget*monitor.py*--sync-only*' } |
-        Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace($monitorPath)) {
+        $monitorPath = 'D:\grok-weekly-quota-widget\monitor.py'
+    }
+    $sync = Keep-One-QuotaDockSyncProcess '*grok-weekly-quota-widget*monitor.py*--sync-only*' $monitorPath 'pythonw.exe'
     $pythonCandidates = @(
         (Resolve-ConfiguredPath 'QUOTADOCK_PYTHONW' 'pythonwPath'),
         (Join-Path $env:LocalAppData 'Programs\Python\Python314\pythonw.exe'),
@@ -80,14 +137,9 @@ elseif ($Provider -eq 'opencode') {
                 $_.CommandLine -like '*opencode_go_browser_bridge.ps1*'
             } |
             ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-        $sync = Get-CimInstance Win32_Process |
-            Where-Object {
-                $_.ProcessId -ne $PID -and
-                $_.CommandLine -like '*opencode_go_background_sync.ps1*'
-            } |
-            Select-Object -First 1
+        $sync = Keep-One-QuotaDockSyncProcess '*opencode_go_background_sync.ps1*' $backgroundPath 'pwsh.exe'
         if ($null -eq $sync -and (Test-Path -LiteralPath $backgroundPath)) {
-            Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath)
+            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath, '-IntervalSeconds', '60')
         }
     }
     else {
@@ -98,14 +150,9 @@ elseif ($Provider -eq 'opencode') {
             } |
             ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
         $bridgePath = Join-Path $root 'opencode_go_browser_bridge.ps1'
-        $bridge = Get-CimInstance Win32_Process |
-            Where-Object {
-                $_.ProcessId -ne $PID -and
-                $_.CommandLine -like '*opencode_go_browser_bridge.ps1*'
-            } |
-            Select-Object -First 1
+        $bridge = Keep-One-QuotaDockSyncProcess '*opencode_go_browser_bridge.ps1*' $bridgePath 'pwsh.exe'
         if ($null -eq $bridge -and (Test-Path -LiteralPath $bridgePath)) {
-            Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $bridgePath)
+            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $bridgePath)
         }
     }
 }

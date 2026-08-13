@@ -1,9 +1,9 @@
 {
-  "version": "0.1.3",
+  "version": "0.1.4",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.3.zip",
-  "sha256": "8578982a28d42fbc3381373efd710c445140697a624766e45d62346e048f3b9d",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.3",
-  "notes": "本地更新包：下载后校验 SHA-256，关闭 QuotaDock，替换运行文件并自动重启。"
+  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.4.zip",
+  "sha256": "54c263343c49b2923c7d24d277a0a6316b62b39229daa9d1308d1c0bfe2061af",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.4",
+  "notes": "同步时间修复：下载后校验 SHA-256，关闭 QuotaDock，替换运行文件并自动重启。"
 }

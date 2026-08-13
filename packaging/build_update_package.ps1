@@ -48,8 +48,8 @@ try {
     if (Test-Path -LiteralPath $manifestPath) {
         try { $existingNotes = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).notes) } catch {}
     }
-    if ([string]::IsNullOrWhiteSpace($existingNotes)) {
-        $existingNotes = '本地更新包：下载后校验 SHA-256，关闭 QuotaDock，替换运行文件并自动重启。'
+    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.4') {
+        $existingNotes = '同步时间修复：下载后校验 SHA-256，关闭 QuotaDock，替换运行文件并自动重启。'
     }
     $manifest = [ordered]@{
         version      = $version

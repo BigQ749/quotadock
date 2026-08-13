@@ -74,13 +74,17 @@ $env:QUOTADOCK_GROK_DATA = 'C:\path\to\grok.json'
 $env:QUOTADOCK_OPENCODE_DATA = 'C:\path\to\opencode_go.json'
 ```
 
-统一数据结构示例：
+统一数据结构示例（`updatedAt` / `lastSuccessAt` 表示最近一次成功；`lastAttemptAt` 表示最近一次尝试；失败不能覆盖成功时间）：
 
 ```json
 {
   "title": "Claude Code",
   "badge": "本地同步",
   "updatedAt": "2026-01-01T00:00:00Z",
+  "lastSuccessAt": "2026-01-01T00:00:00Z",
+  "lastAttemptAt": "2026-01-01T00:00:05Z",
+  "syncStatus": "success",
+  "lastError": null,
   "windows": [
     {
       "label": "周额度",
@@ -91,7 +95,7 @@ $env:QUOTADOCK_OPENCODE_DATA = 'C:\path\to\opencode_go.json'
 }
 ```
 
-同步失败、401/403、登录过期或页面结构变化时，应显示“同步失败/时间未知”，不能把错误伪装成 0% 额度。
+同步失败、401/403、登录过期或页面结构变化时，应显示“同步失败”，保留最近一次有效额度，并单独显示“上次成功时间”；不能把失败尝试时间伪装成成功同步时间，也不能把错误伪装成 0% 额度。QuotaDock 启动器会为 Codex、Grok、OpenCode Go 同步器做单实例收敛，避免多个进程同时覆盖同一个 JSON。
 
 ## OpenCode Go
 

@@ -5,7 +5,7 @@
 1. 使用平台官方页面、官方 CLI 或用户已授权的本地同步工具读取额度。
 2. 只提取额度百分比、重置时间、同步时间和必要的错误摘要。
 3. 把结果写到本地 JSON，使用临时文件再替换，避免 UI 读到半截文件。
-4. 让 QuotaDock 每 5 秒读取一次；同步器按平台限制选择 60 秒或更长周期。
+4. 让 QuotaDock 每 5 秒读取一次；同步器按平台限制选择 60 秒或更长周期，并为每个平台保持单一写入者。
 
 ## 自定义平台 JSON
 
@@ -15,6 +15,10 @@
   "badge": "本地同步",
   "status": "已同步 12:00",
   "updatedAt": "2026-01-01T00:00:00Z",
+  "lastSuccessAt": "2026-01-01T00:00:00Z",
+  "lastAttemptAt": "2026-01-01T00:00:05Z",
+  "syncStatus": "success",
+  "lastError": null,
   "windows": [
     {
       "label": "周额度",
@@ -29,7 +33,7 @@
 
 ## 失败处理
 
-不要把 Cookie、Authorization header 或 HTML 原文写进快照。失败时只写短错误，例如 `HTTP 401 · session expired`，同时保留最近一次有效额度和新的状态说明。
+不要把 Cookie、Authorization header 或 HTML 原文写进快照。失败时只写短错误，例如 `HTTP 401 · session expired`，同时保留最近一次有效额度和新的状态说明。`lastAttemptAt` 可以更新，`lastSuccessAt` 不能更新；否则界面会把失败时间显示成成功同步时间。
 
 ## 版本兼容
 

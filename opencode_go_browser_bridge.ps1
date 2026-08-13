@@ -22,6 +22,7 @@ elseif (Test-Path -LiteralPath $sourceConfigPath) {
     }
 }
 $bridgeLog = Join-Path $env:TEMP 'quotadock-opencode-bridge.log'
+$mutexName = 'Local\QuotaDockOpenCodeGoWriteMutex'
 
 function Write-BridgeLog {
     param([string]$Message)
@@ -109,15 +110,20 @@ function Write-QuotaFile {
         })
     }
 
+    $now = [DateTime]::UtcNow.ToString('o')
     $output = [ordered]@{
         provider  = 'opencode'
         isLive    = $true
         source    = 'official_console_browser'
-        updatedAt = [DateTime]::UtcNow.ToString('o')
+        updatedAt = $now
+        lastSuccessAt = $now
+        lastAttemptAt = $now
+        syncStatus = 'success'
+        lastError = $null
         note      = 'Official OpenCode Console browser bridge; quota values only.'
         windows   = @($canonical.ToArray())
     }
-    $json = $output | ConvertTo-Json -Depth 8
+    $json = $output | ConvertTo-Json -Depth 10
     $directory = Split-Path -Parent $dataPath
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $tmpPath = "$dataPath.$PID.tmp"
@@ -133,6 +139,15 @@ function Write-QuotaFile {
     catch {
         Move-Item -LiteralPath $tmpPath -Destination $dataPath -Force
     }
+}
+
+$dataMutex = New-Object System.Threading.Mutex($false, $mutexName)
+$ownsDataMutex = $false
+try { $ownsDataMutex = $dataMutex.WaitOne(0) } catch { $ownsDataMutex = $false }
+if (-not $ownsDataMutex) {
+    Write-BridgeLog 'not-started: another OpenCode Go writer is already running'
+    $dataMutex.Dispose()
+    exit 0
 }
 
 $listener = New-Object System.Net.HttpListener
@@ -187,5 +202,9 @@ finally {
         $listener.Stop()
     }
     $listener.Close()
+    if ($ownsDataMutex) {
+        try { $dataMutex.ReleaseMutex() } catch {}
+    }
+    $dataMutex.Dispose()
     Write-BridgeLog 'stopped'
 }

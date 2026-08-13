@@ -11,6 +11,7 @@ $sourceConfigPath = Join-Path $stateDir 'quota_sources.json'
 $dataPath = Join-Path $stateDir 'data\opencode_go.json'
 $credentialPath = Join-Path $stateDir 'opencode_go_credentials.json'
 $syncLog = Join-Path $env:TEMP 'quotadock-opencode-background.log'
+$mutexName = 'Local\QuotaDockOpenCodeGoWriteMutex'
 $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36'
 
 if (Test-Path -LiteralPath $sourceConfigPath) {
@@ -41,6 +42,61 @@ function Write-BackgroundLog {
         Add-Content -LiteralPath $syncLog -Value ((Get-Date -Format 's') + ' ' + $Message) -Encoding UTF8
     }
     catch {
+    }
+}
+
+function Write-JsonAtomic {
+    param(
+        [string]$Path,
+        $Payload
+    )
+    $directory = Split-Path -Parent $Path
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    $json = $Payload | ConvertTo-Json -Depth 10
+    $tmpPath = "$Path.$PID.tmp"
+    [System.IO.File]::WriteAllText($tmpPath, $json, (New-Object System.Text.UTF8Encoding($false)))
+    try {
+        if (Test-Path -LiteralPath $Path) {
+            [System.IO.File]::Replace($tmpPath, $Path, $null, $true)
+        }
+        else {
+            [System.IO.File]::Move($tmpPath, $Path)
+        }
+    }
+    catch {
+        Move-Item -LiteralPath $tmpPath -Destination $Path -Force
+    }
+}
+
+function Read-ExistingSnapshot {
+    $candidates = @($dataPath, (Join-Path $baseDir 'opencode_go_live.json'))
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            continue
+        }
+        try {
+            return Get-Content -LiteralPath $candidate -Raw -Encoding UTF8 | ConvertFrom-Json
+        }
+        catch {
+        }
+    }
+    return $null
+}
+
+function Set-JsonProperty {
+    param(
+        $Object,
+        [string]$Name,
+        $Value
+    )
+    if ($null -eq $Object) {
+        return
+    }
+    if ($null -ne $Object.PSObject.Properties[$Name]) {
+        $Object.$Name = $Value
+    }
+    else {
+        $Object | Add-Member -MemberType NoteProperty -Name $Name -Value $Value
     }
 }
 
@@ -300,30 +356,43 @@ function Fetch-OpenCodeGoHtml {
 function Write-QuotaSnapshot {
     param([array]$Windows)
 
+    $now = [DateTime]::UtcNow.ToString('o')
     $output = [ordered]@{
         provider  = 'opencode'
         isLive    = $true
         source    = 'official_console_background'
-        updatedAt = [DateTime]::UtcNow.ToString('o')
+        updatedAt = $now
+        lastSuccessAt = $now
+        lastAttemptAt = $now
+        syncStatus = 'success'
+        lastError = $null
         note      = 'Official OpenCode Go dashboard direct fetch; quota values only.'
         windows   = @($Windows)
     }
-    $json = $output | ConvertTo-Json -Depth 8
-    $directory = Split-Path -Parent $dataPath
-    New-Item -ItemType Directory -Path $directory -Force | Out-Null
-    $tmpPath = "$dataPath.$PID.tmp"
-    [System.IO.File]::WriteAllText($tmpPath, $json, (New-Object System.Text.UTF8Encoding($false)))
-    try {
-        if (Test-Path -LiteralPath $dataPath) {
-            [System.IO.File]::Replace($tmpPath, $dataPath, $null, $true)
-        }
-        else {
-            [System.IO.File]::Move($tmpPath, $dataPath)
+    Write-JsonAtomic $dataPath $output
+}
+
+function Write-QuotaFailureState {
+    param([string]$Message)
+
+    $now = [DateTime]::UtcNow.ToString('o')
+    $existing = Read-ExistingSnapshot
+    if ($null -eq $existing) {
+        $existing = [pscustomobject]@{
+            provider = 'opencode'
+            source = 'official_console_background'
+            windows = @()
         }
     }
-    catch {
-        Move-Item -LiteralPath $tmpPath -Destination $dataPath -Force
+    Set-JsonProperty $existing 'isLive' $false
+    Set-JsonProperty $existing 'source' 'official_console_background'
+    Set-JsonProperty $existing 'lastAttemptAt' $now
+    Set-JsonProperty $existing 'syncStatus' 'error'
+    Set-JsonProperty $existing 'lastError' $Message
+    if ([string]::IsNullOrWhiteSpace([string]$existing.note)) {
+        Set-JsonProperty $existing 'note' 'OpenCode Go 后台同步失败；保留最近一次成功额度。'
     }
+    Write-JsonAtomic $dataPath $existing
 }
 
 function Invoke-BackgroundSync {
@@ -347,10 +416,31 @@ if ($SelfTest) {
 
 if (-not (Test-Path -LiteralPath $credentialPath)) {
     Write-BackgroundLog 'not-started: credentials are not configured'
+    try {
+        Write-QuotaFailureState '未配置 OpenCode Go 后台凭证'
+    }
+    catch {
+        Write-BackgroundLog ('failure-state: ' + $_.Exception.Message)
+    }
     exit 2
 }
 
-do {
+$syncMutex = New-Object System.Threading.Mutex($false, $mutexName)
+$ownsSyncMutex = $false
+try {
+    $ownsSyncMutex = $syncMutex.WaitOne(0)
+}
+catch {
+    $ownsSyncMutex = $false
+}
+if (-not $ownsSyncMutex) {
+    Write-BackgroundLog 'not-started: another OpenCode Go sync process is already running'
+    $syncMutex.Dispose()
+    exit 0
+}
+
+try {
+    do {
     try {
         $result = Invoke-BackgroundSync
         if ($Once) {
@@ -359,9 +449,11 @@ do {
         }
     }
     catch {
-        Write-BackgroundLog ('error: ' + $_.Exception.Message)
+        $message = $_.Exception.Message
+        Write-BackgroundLog ('error: ' + $message)
+        try { Write-QuotaFailureState $message } catch { Write-BackgroundLog ('failure-state: ' + $_.Exception.Message) }
         if ($Once) {
-            Write-Output ('SYNC FAIL: ' + $_.Exception.Message)
+            Write-Output ('SYNC FAIL: ' + $message)
             exit 1
         }
     }
@@ -370,4 +462,11 @@ do {
         exit 1
     }
     Start-Sleep -Seconds ([Math]::Max(15, $IntervalSeconds))
-} while ($true)
+    } while ($true)
+}
+finally {
+    if ($ownsSyncMutex) {
+        try { $syncMutex.ReleaseMutex() } catch {}
+    }
+    $syncMutex.Dispose()
+}

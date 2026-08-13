@@ -224,9 +224,21 @@ function Resolve-QuotaDockSourcePath {
 $localDataRoot = Join-Path $appStateRoot 'data'
 function Get-QuotaDockDataFallback {
     param([string]$LocalName, [string]$ExampleName)
-    $localPath = Join-Path $localDataRoot $LocalName
-    if (Test-Path -LiteralPath $localPath) {
-        return $localPath
+    $candidates = New-Object System.Collections.ArrayList
+    [void]$candidates.Add((Join-Path $localDataRoot $LocalName))
+    switch ($LocalName) {
+        'codex.json' { [void]$candidates.Add('D:\AI\codex-quota-desktop\codex_quota_live.json') }
+        'grok.json' { [void]$candidates.Add('D:\grok-weekly-quota-widget\data.json') }
+        'opencode_go.json' { [void]$candidates.Add((Join-Path $baseDir 'opencode_go_live.json')) }
+    }
+    foreach ($candidate in @($candidates)) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+    # Do not show example quota values in the live desktop application.
+    if (@('codex.json', 'grok.json', 'opencode_go.json') -contains $LocalName) {
+        return $null
     }
     return Join-Path $baseDir ('examples\' + $ExampleName)
 }
@@ -235,6 +247,43 @@ $script:DataDefaults = @{
     codex    = Resolve-QuotaDockSourcePath 'codexPath' 'QUOTADOCK_CODEX_DATA' (Get-QuotaDockDataFallback 'codex.json' 'codex.quota.example.json')
     grok     = Resolve-QuotaDockSourcePath 'grokPath' 'QUOTADOCK_GROK_DATA' (Get-QuotaDockDataFallback 'grok.json' 'grok.quota.example.json')
     opencode = Resolve-QuotaDockSourcePath 'opencodePath' 'QUOTADOCK_OPENCODE_DATA' (Get-QuotaDockDataFallback 'opencode_go.json' 'opencode_go.quota.example.json')
+}
+
+function Test-ExplicitQuotaDataSource {
+    param([string]$ConfigName, [string]$EnvironmentName)
+    $value = [Environment]::GetEnvironmentVariable($EnvironmentName)
+    if (-not [string]::IsNullOrWhiteSpace($value)) {
+        return $true
+    }
+    $property = $script:SourceConfig.PSObject.Properties[$ConfigName]
+    return ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value))
+}
+
+$script:ExplicitDataSources = @{
+    codex    = Test-ExplicitQuotaDataSource 'codexPath' 'QUOTADOCK_CODEX_DATA'
+    grok     = Test-ExplicitQuotaDataSource 'grokPath' 'QUOTADOCK_GROK_DATA'
+    opencode = Test-ExplicitQuotaDataSource 'opencodePath' 'QUOTADOCK_OPENCODE_DATA'
+}
+
+function Get-ActiveQuotaDataPath {
+    param([string]$Provider)
+    $configuredPath = $script:DataDefaults[$Provider]
+    if ($script:ExplicitDataSources[$Provider]) {
+        return $configuredPath
+    }
+    $localName = switch ($Provider) {
+        'codex' { 'codex.json' }
+        'grok' { 'grok.json' }
+        'opencode' { 'opencode_go.json' }
+        default { $null }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($localName)) {
+        $localPath = Join-Path $localDataRoot $localName
+        if (Test-Path -LiteralPath $localPath -PathType Leaf) {
+            return $localPath
+        }
+    }
+    return $configuredPath
 }
 
 $script:Cards = @{}
@@ -331,7 +380,7 @@ Import-CustomProviders
 
 function Read-QuotaData {
     param([string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) {
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         return $null
     }
     try {
@@ -399,6 +448,40 @@ function Format-UpdatedText {
     }
 }
 
+function Get-SyncAgeMinutes {
+    param($UpdatedAt)
+    if ([string]::IsNullOrWhiteSpace([string]$UpdatedAt)) {
+        return $null
+    }
+    try {
+        return [Math]::Max(0, ([datetimeoffset]::Now - [datetimeoffset]::Parse([string]$UpdatedAt)).TotalMinutes)
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-SyncStatusText {
+    param(
+        $Data,
+        [string]$DefaultPrefix = '已同步'
+    )
+    $updatedAt = [string](Get-JsonValue $Data 'updatedAt')
+    if ([string]::IsNullOrWhiteSpace($updatedAt)) {
+        $updatedAt = [string](Get-JsonValue $Data 'synced_at')
+    }
+    $text = if ([string]::IsNullOrWhiteSpace($updatedAt)) {
+        '等待同步'
+    }
+    else {
+        Format-UpdatedText $updatedAt
+    }
+    if ($DefaultPrefix -ne '已同步' -and $text -match '^已同步 ') {
+        $text = $text -replace '^已同步 ', ($DefaultPrefix + ' ')
+    }
+    return $text
+}
+
 function New-Row {
     param([string]$Label, [string]$Remaining, [string]$ResetText)
     return [pscustomobject]@{
@@ -411,7 +494,7 @@ function New-Row {
 
 function Get-UiModel {
     param([string]$Provider)
-    $data = Read-QuotaData $script:DataDefaults[$Provider]
+    $data = Read-QuotaData (Get-ActiveQuotaDataPath $Provider)
     if ($null -eq $data) {
         return [pscustomobject]@{
             Title  = $script:Profiles[$Provider].Title
@@ -478,10 +561,25 @@ function Get-UiModel {
         $source = Get-JsonValue $data 'source'
         $remaining = Get-JsonValue $weekly 'remainingPercent'
         $resetAt = Get-JsonValue $weekly 'resetAt'
+        $updatedAt = [string](Get-JsonValue $source 'lastSuccessAt')
+        if ([string]::IsNullOrWhiteSpace($updatedAt)) {
+            $updatedAt = [string](Get-JsonValue $source 'updatedAt')
+        }
+        $age = Get-SyncAgeMinutes $updatedAt
+        $syncStatus = [string](Get-JsonValue $source 'syncStatus')
+        $lastError = [string](Get-JsonValue $source 'lastError')
+        $status = Get-SyncStatusText $source
+        if ($syncStatus -eq 'error' -and -not [string]::IsNullOrWhiteSpace($lastError)) {
+            $status = '同步失败 · ' + $lastError + ' · ' + $status
+        }
+        elseif ($null -ne $age -and $age -gt 10) {
+            $status = $status -replace '^已同步 ', '上次同步 '
+            $status += ' · 数据已过期'
+        }
         return [pscustomobject]@{
             Title  = 'Codex'
-            Badge  = '本地同步'
-            Status = Format-UpdatedText (Get-JsonValue $source 'updatedAt')
+            Badge  = if ($null -ne $age -and $age -gt 10) { '缓存' } else { '本地同步' }
+            Status = $status
             Rows   = @((New-Row '周额度' (Format-Percent $remaining) (Format-ResetText $resetAt)))
             Error  = $false
         }
@@ -492,16 +590,41 @@ function Get-UiModel {
         $resetText = Get-JsonValue $data 'reset_txt'
         $syncText = Get-JsonValue $data 'synced_at'
         $errorText = Get-JsonValue $data 'err'
-        $status = '等待同步'
-        if (-not [string]::IsNullOrWhiteSpace([string]$errorText)) {
-            $status = '同步失败 · ' + [string]$errorText
+        $updatedAt = [string](Get-JsonValue $data 'last_success_at')
+        if ([string]::IsNullOrWhiteSpace($updatedAt)) {
+            $updatedAt = [string](Get-JsonValue $data 'lastSuccessAt')
         }
-        elseif (-not [string]::IsNullOrWhiteSpace([string]$syncText)) {
+        if ([string]::IsNullOrWhiteSpace($updatedAt) -and [string]::IsNullOrWhiteSpace([string]$errorText)) {
+            $updatedAt = [string](Get-JsonValue $data 'updatedAt')
+        }
+        if ([string]::IsNullOrWhiteSpace($updatedAt) -and [string]::IsNullOrWhiteSpace([string]$errorText)) {
+            $updatedAt = $syncText
+        }
+        $age = Get-SyncAgeMinutes $updatedAt
+        $syncStatus = [string](Get-JsonValue $data 'syncStatus')
+        if ([string]::IsNullOrWhiteSpace($syncStatus)) {
+            $syncStatus = [string](Get-JsonValue $data 'sync_status')
+        }
+        $status = '等待同步'
+        if ($syncStatus -ne 'error' -and -not [string]::IsNullOrWhiteSpace([string]$syncText)) {
             $status = '已同步 ' + [string]$syncText
+        }
+        if ($syncStatus -eq 'error' -or -not [string]::IsNullOrWhiteSpace([string]$errorText)) {
+            $status = '同步失败 · ' + [string]$errorText
+            if (-not [string]::IsNullOrWhiteSpace($updatedAt)) {
+                $status += ' · 上次成功 ' + ((Format-UpdatedText $updatedAt) -replace '^已同步 ', '')
+            }
+            else {
+                $status += ' · 上次成功时间未知'
+            }
+        }
+        elseif ($null -ne $age -and $age -gt 10) {
+            $status = $status -replace '^已同步 ', '上次同步 '
+            $status += ' · 数据已过期'
         }
         return [pscustomobject]@{
             Title  = 'Grok'
-            Badge  = '本地同步'
+            Badge  = if ($syncStatus -eq 'error' -or ($null -ne $age -and $age -gt 10)) { '缓存' } else { '本地同步' }
             Status = $status
             Rows   = @((New-Row '周额度' (Format-Percent $remaining) ([string]$resetText)))
             Error  = $false
@@ -522,10 +645,19 @@ function Get-UiModel {
     $isLive = [bool](Get-JsonValue $data 'isLive')
     $source = [string](Get-JsonValue $data 'source')
     $updatedAt = [string](Get-JsonValue $data 'updatedAt')
+    $lastSuccessAt = [string](Get-JsonValue $data 'lastSuccessAt')
+    if ([string]::IsNullOrWhiteSpace($lastSuccessAt)) {
+        $lastSuccessAt = $updatedAt
+    }
+    $syncStatus = [string](Get-JsonValue $data 'syncStatus')
+    if ([string]::IsNullOrWhiteSpace($syncStatus)) {
+        $syncStatus = [string](Get-JsonValue $data 'sync_status')
+    }
+    $lastError = [string](Get-JsonValue $data 'lastError')
     $liveSources = @('official_console_browser', 'official_console_background')
     if ($isLive -and $liveSources -contains $source) {
         try {
-            $age = [DateTime]::UtcNow - [DateTime]::Parse($updatedAt).ToUniversalTime()
+            $age = [DateTime]::UtcNow - [DateTime]::Parse($lastSuccessAt).ToUniversalTime()
             if ($age.TotalMinutes -gt 10) {
                 $isLive = $false
             }
@@ -535,7 +667,7 @@ function Get-UiModel {
         }
     }
     $badge = if ($isLive) { '实时' } else { '页面快照' }
-    $updatedText = Format-UpdatedText $updatedAt
+    $updatedText = Format-UpdatedText $lastSuccessAt
     if ($updatedText -eq '等待同步') {
         $status = $updatedText
     }
@@ -544,6 +676,11 @@ function Get-UiModel {
     }
     else {
         $status = $updatedText -replace '^已同步 ', '同步 '
+    }
+    if ($syncStatus -eq 'error' -and -not [string]::IsNullOrWhiteSpace($lastError)) {
+        $status = '同步失败 · ' + $lastError + ' · ' + ($updatedText -replace '^已同步 ', '上次同步 ')
+        $isLive = $false
+        $badge = '缓存'
     }
 
     return [pscustomobject]@{

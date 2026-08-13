@@ -21,6 +21,7 @@ quota_center.ps1  --------  平台选择、显示状态、添加/删除自定义
 
 - 视图层只读取本地 JSON；它不需要第三方 API Key。
 - OpenCode Go 后台同步单独处理认证，并把结果写入 `%LOCALAPPDATA%\QuotaDock\data\opencode_go.json`。
+- 三个平台的同步器都必须是单实例写入者；快照区分最近成功时间、最近尝试时间和失败原因。失败时保留最近一次有效额度，不覆盖成功时间。
 - 凭据和运行状态放在 `%LOCALAPPDATA%\QuotaDock`，不放在仓库目录。
 - Git 仓库只包含代码、公开示例、品牌来源说明和脱敏截图。
 
