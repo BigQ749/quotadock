@@ -54,6 +54,8 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 3. 校验 SHA-256 后运行安装器，按向导选择安装盘/目录、阅读许可证、选择快捷方式和开机启动。
 4. 通过桌面/开始菜单快捷方式启动 QuotaDock；安装目录里的 VBS 不需要手动操作。
 
+第一次部署的用户强烈建议先看 [新手部署指南（实测经验版）](docs/deployment-guide.md)：里面包含环境检查、首次同步、关掉浏览器后的后台同步，以及“PowerShell 7+ 弹窗”“同步时间不更新”等真实踩坑的解决办法。
+
 安装器由 `.github/workflows/release.yml` 在 Windows runner 上使用 Inno Setup 构建；源码仓库不提交编译机的个人数据。
 
 ## 第一次配置额度数据

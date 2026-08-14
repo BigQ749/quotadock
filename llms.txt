@@ -30,6 +30,7 @@ Add a provider by registering a local JSON source in `quota_sources.json` or thr
 - `README.md`
 - `docs/architecture.md`
 - `docs/provider-adapter.md`
+- `docs/deployment-guide.md`
 - `docs/troubleshooting.md`
 - `docs/release.md`
 - `SECURITY.md`
