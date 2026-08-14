@@ -12,6 +12,10 @@ if ([string]::IsNullOrWhiteSpace($powershell7)) {
     $powershell7 = 'pwsh.exe'
 }
 
+# One WMI snapshot per launcher run. A full Win32_Process enumeration costs
+# roughly half a second, and startup previously repeated it for every check.
+$script:ProcessSnapshot = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+
 function Read-QuotaDockSourceConfig {
     if (-not (Test-Path -LiteralPath $sourceConfigPath)) {
         return [pscustomobject]@{}
@@ -42,7 +46,7 @@ function Resolve-ConfiguredPath {
 
 function Get-QuotaDockSyncProcesses {
     param([string]$Pattern)
-    return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    return @($script:ProcessSnapshot |
         Where-Object {
             $_.ProcessId -ne $PID -and
             $_.Name -in @('pwsh.exe', 'powershell.exe', 'python.exe', 'pythonw.exe') -and
@@ -92,7 +96,7 @@ function Keep-One-QuotaDockSyncProcess {
 }
 
 # 停掉旧版独立浮窗和旧大融合面板，避免新旧两套窗口同时存在
-Get-CimInstance Win32_Process |
+$script:ProcessSnapshot |
     Where-Object {
         $_.ProcessId -ne $PID -and $_.Name -in @('pwsh.exe', 'powershell.exe') -and
         ($_.CommandLine -like '*quota_small_widget.ps1*' -or $_.CommandLine -like '*quota_fusion_desktop.ps1*') -and
@@ -135,7 +139,7 @@ elseif ($Provider -eq 'opencode') {
     $credentialPath = $credentialCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
     $backgroundPath = Join-Path $root 'opencode_go_background_sync.ps1'
     if (Test-Path -LiteralPath $credentialPath) {
-        Get-CimInstance Win32_Process |
+        $script:ProcessSnapshot |
             Where-Object {
                 $_.ProcessId -ne $PID -and
                 $_.CommandLine -like '*opencode_go_browser_bridge.ps1*'
@@ -147,7 +151,7 @@ elseif ($Provider -eq 'opencode') {
         }
     }
     else {
-        Get-CimInstance Win32_Process |
+        $script:ProcessSnapshot |
             Where-Object {
                 $_.ProcessId -ne $PID -and
                 $_.CommandLine -like '*opencode_go_background_sync.ps1*'

@@ -156,8 +156,26 @@ catch {
     $hasMutex = $true
 }
 if (-not $hasMutex) {
+    # Another center instance is already running (usually in the tray). Ask it
+    # to show its window, then exit: the shortcut stays a fast "show" action
+    # instead of silently doing nothing.
+    try {
+        $showEvent = New-Object System.Threading.EventWaitHandle($false, [System.Threading.EventResetMode]::AutoReset, 'Local\QuotaDockShowCenter')
+        $showEvent.Set() | Out-Null
+        $showEvent.Dispose()
+    }
+    catch {
+    }
     $mutex.Dispose()
     exit 0
+}
+
+$script:ShowCenterEvent = $null
+try {
+    $script:ShowCenterEvent = New-Object System.Threading.EventWaitHandle($false, [System.Threading.EventResetMode]::AutoReset, 'Local\QuotaDockShowCenter')
+}
+catch {
+    $script:ShowCenterEvent = $null
 }
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -251,6 +269,8 @@ $script:UpdateCheckProcess = $null
 $script:UpdateCheckInProgress = $false
 $script:UpdateResultConsumed = $false
 $script:UpdateResultPath = Join-Path $env:TEMP ('quotadock-update-result-' + $PID + '.json')
+$script:StartupProvidersLaunched = $false
+$script:ShowTimer = $null
 
 function Save-State {
     try {
@@ -316,12 +336,17 @@ function Write-HostRequest {
 }
 
 function Start-Provider {
-    param([string]$Provider)
+    param(
+        [string]$Provider,
+        [switch]$SkipHostCheck
+    )
     $launcher = Join-Path $root 'launch_quota_small_widget.ps1'
     if (-not (Test-Path -LiteralPath $launcher)) {
         throw ('找不到启动器: ' + $launcher)
     }
-    Ensure-HostProcess
+    if (-not $SkipHostCheck) {
+        Ensure-HostProcess
+    }
     $arguments = @(
         '-NoProfile'
         '-ExecutionPolicy'
@@ -353,16 +378,18 @@ function Test-ProviderRegistered {
 }
 
 function Ensure-HostProcess {
-    $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-        $_.Name -in @('pwsh.exe', 'powershell.exe') -and $_.CommandLine -like '*quota_fusion_host.ps1*'
-    })
-    if ($running.Count -gt 0) {
+    # The host records its PID in host_state.json; the file + process check is
+    # milliseconds and skips the launch when the host is already live.
+    $known = Read-HostRuntimeState
+    if ($null -ne $known) {
         return
     }
     $hostPath = Join-Path $root 'quota_fusion_host.ps1'
     if (-not (Test-Path -LiteralPath $hostPath)) {
         throw ('找不到宿主脚本: ' + $hostPath)
     }
+    # Start-Process is asynchronous and the host self-converges via a named
+    # mutex, so a stale host_state.json cannot cause duplicate hosts here.
     Start-Process -FilePath $powershell -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @(
         '-NoProfile'
         '-ExecutionPolicy'
@@ -370,7 +397,6 @@ function Ensure-HostProcess {
         '-File'
         $hostPath
     ) | Out-Null
-    Start-Sleep -Milliseconds 260
 }
 
 function Get-QuotaDockOwnedProcesses {
@@ -871,10 +897,16 @@ function Exit-Center {
 }
 
 function Open-SelectedProviders {
+    if ($script:StartupProvidersLaunched) {
+        return
+    }
+    $script:StartupProvidersLaunched = $true
+    # The host is already started early by the startup path; this only fans out
+    # the provider launchers. Start-Process is asynchronous, so the three run
+    # concurrently instead of one-by-one with sleeps.
     foreach ($provider in $script:SelectedProviders) {
         try {
-            Start-Provider $provider
-            Start-Sleep -Milliseconds 140
+            Start-Provider $provider -SkipHostCheck
         }
         catch {
             Set-Status (($providers[$provider].Title) + ' 启动失败：' + $_.Exception.Message)
@@ -1515,6 +1547,23 @@ function New-ProviderToggle {
 $selected = Load-State
 $script:SelectedProviders = @($selected)
 
+# Start the fusion host early so it initializes in parallel with the center
+# form. Provider launchers fan out from the open timer, which fires after the
+# form is built; the host polls the request file every 250ms and picks up the
+# 'add' requests without blocking center startup.
+if ($script:SelectedProviders.Count -gt 0) {
+    try {
+        Ensure-HostProcess
+        Open-SelectedProviders
+    }
+    catch {
+        Write-CenterError 'early-host-start' $_
+    }
+}
+else {
+    $script:StartupProvidersLaunched = $true
+}
+
 $background = [System.Drawing.Color]::FromArgb(20, 23, 29)
 $surface = [System.Drawing.Color]::FromArgb(30, 35, 43)
 $surfaceRaised = [System.Drawing.Color]::FromArgb(38, 44, 54)
@@ -1900,7 +1949,7 @@ Start-QuotaDockUpdateCheck
 
 $openTimer = New-Object System.Windows.Forms.Timer
 $script:OpenTimer = $openTimer
-$openTimer.Interval = 350
+$openTimer.Interval = 120
 $openTimer.Add_Tick({
     $openTimer.Stop()
     Open-SelectedProviders
@@ -1921,12 +1970,42 @@ $stateTimer.Add_Tick({
 })
 $stateTimer.Start()
 
+if ($null -ne $script:ShowCenterEvent) {
+    $showTimer = New-Object System.Windows.Forms.Timer
+    $script:ShowTimer = $showTimer
+    $showTimer.Interval = 400
+    $showTimer.Add_Tick({
+        if ($script:CenterExiting) {
+            $showTimer.Stop()
+            $showTimer.Dispose()
+            $script:ShowTimer = $null
+            return
+        }
+        try {
+            if ($script:ShowCenterEvent.WaitOne(0)) {
+                Show-Center
+            }
+        }
+        catch {
+            $showTimer.Stop()
+            $showTimer.Dispose()
+            $script:ShowTimer = $null
+        }
+    })
+    $showTimer.Start()
+}
+
 try {
     [System.Windows.Forms.Application]::Run($form)
 }
 finally {
     $openTimer.Stop()
     $script:OpenTimer = $null
+    if ($null -ne $script:ShowTimer) {
+        $script:ShowTimer.Stop()
+        $script:ShowTimer.Dispose()
+        $script:ShowTimer = $null
+    }
     if ($null -ne $script:StateTimer) {
         $script:StateTimer.Stop()
         $script:StateTimer.Dispose()
