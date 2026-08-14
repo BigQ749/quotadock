@@ -24,9 +24,7 @@ quota-dock-top-handle-test.png
 quota-floater-*.png
 quotadock-ui-*.png
 
-# Build output
-dist/*
-!dist/
+# Build output. Release binaries live in GitHub Releases, not in the source tree.
+dist/
 output/
 *.zip
-!dist/QuotaDock-v*.zip

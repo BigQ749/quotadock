@@ -8,6 +8,10 @@ $version = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw -Encoding 
 if ($version -notmatch '^\d+\.\d+\.\d+$') {
     throw ('VERSION 必须是三段式版本号: ' + $version)
 }
+$repository = [Environment]::GetEnvironmentVariable('QUOTADOCK_UPDATE_REPO')
+if ([string]::IsNullOrWhiteSpace($repository)) {
+    $repository = 'BigQ749/quotadock'
+}
 
 $dist = Join-Path $root 'dist'
 $packagePath = Join-Path $dist ('QuotaDock-v' + $version + '.zip')
@@ -45,19 +49,24 @@ try {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $packagePath -CompressionLevel Optimal -Force
     $sha256 = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $existingNotes = ''
-    if (Test-Path -LiteralPath $manifestPath) {
+    $notesPath = Join-Path $root ('docs\releases\v' + $version + '.md')
+    if (Test-Path -LiteralPath $notesPath) {
+        $existingNotes = (Get-Content -LiteralPath $notesPath -Raw -Encoding UTF8).Trim()
+    }
+    if ([string]::IsNullOrWhiteSpace($existingNotes) -and (Test-Path -LiteralPath $manifestPath)) {
         try { $existingNotes = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).notes) } catch {}
     }
-    if ([string]::IsNullOrWhiteSpace($existingNotes) -or $version -eq '0.1.10') {
-        $existingNotes = '修复添加其他平台对话框被置顶管理中心遮挡导致卡死的问题，并移除“已吸附”状态文字。'
+    if ([string]::IsNullOrWhiteSpace($existingNotes)) {
+        $existingNotes = 'QuotaDock 更新。请查看对应 Release 说明。'
     }
+    $releaseTag = 'v' + $version
     $manifest = [ordered]@{
         version      = $version
         channel      = 'stable'
         packageType  = 'zip'
-        downloadUrl  = 'https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v' + $version + '.zip'
+        downloadUrl  = 'https://github.com/' + $repository + '/releases/download/' + $releaseTag + '/QuotaDock-v' + $version + '.zip'
         sha256       = $sha256
-        releaseUrl   = 'https://github.com/BigQ749/quotadock/releases/tag/v' + $version
+        releaseUrl   = 'https://github.com/' + $repository + '/releases/tag/' + $releaseTag
         notes        = $existingNotes
     }
     [System.IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))

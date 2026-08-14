@@ -1,9 +1,9 @@
 {
-  "version": "0.1.11",
+  "version": "0.1.12",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.11.zip",
-  "sha256": "f9f5f00ca31aa3c87ed7600731ae4f5545715c7bbcd35b52fa4bfdbd7c0eb2b2",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.11",
-  "notes": "修复桌面启动器对商店版 PowerShell 7 的误判弹窗，并新增新手部署指南。"
+  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.1.12/QuotaDock-v0.1.12.zip",
+  "sha256": "d43ab66047d22a01a3fec048a2393d1b035dff91e605b0bf049109675bfacf4f",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.12",
+  "notes": "# QuotaDock v0.1.12\n\n## 发布前整理\n\n- 移除源码分支中的历史安装包和便携 ZIP；旧版本仍可从 GitHub Releases 回退。\n- 更新器改为下载对应 Release 的真实 ZIP，并校验该 Release 资产的 SHA-256。\n- 发布工作流会在 Release 创建后自动回写 `main/update-manifest.json`，避免源码包与 Release 包哈希不一致。\n\n## 修复与改进\n\n- 修正 v0.1.11 发布说明中部署指南的链接路径。\n- 增强 GitHub Release、Release 清单和 VERSION 三级更新检查兜底。\n- 保留 PowerShell 7+ 启动器、安装向导、开机启动选项与本地数据保留逻辑。\n\n## 发布内容\n\n- `QuotaDock-Setup-0.1.12.exe`：标准 Windows 安装器。\n- `QuotaDock-v0.1.12.zip`：便携版/本地更新包。\n- `SHA256SUMS.txt`：下载校验值。"
 }

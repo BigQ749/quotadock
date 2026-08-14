@@ -146,6 +146,8 @@ if ($updateSource -notmatch 'Get-LatestReleaseFromVersionFile' -or
     throw 'REGRESSION_FAIL: update checks must fall back when the GitHub API is rate-limited'
 }
 if ($updateSource -notmatch 'Get-LatestReleaseFromManifest' -or
+    $updateSource -notmatch 'Get-LatestReleaseFromReleaseManifest' -or
+    $updateSource -notmatch 'Convert-GitHubReleaseToUpdateRelease' -or
     $updateSource -notmatch 'download_url' -or
     $updateSource -notmatch 'sha256') {
     throw 'REGRESSION_FAIL: update checks must read a direct package manifest and SHA-256'
@@ -154,10 +156,12 @@ if ($centerSource -notmatch 'GitHub 更新接口暂时限流') {
     throw 'REGRESSION_FAIL: rate-limit update results must use a non-error informational message'
 }
 $launcherSource = Get-Content -LiteralPath (Join-Path $root 'launch_quota_small_widget.ps1') -Raw -Encoding UTF8
-if ($hostSource -notmatch 'D:\\AI\\codex-quota-desktop\\codex_quota_live\.json' -or
-    $hostSource -notmatch 'D:\\grok-weekly-quota-widget\\data\.json' -or
+if ($hostSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or
+    $launcherSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or
+    $hostSource -notmatch 'Get-QuotaDockSiblingIntegrationPath' -or
+    $launcherSource -notmatch 'Get-QuotaDockSiblingIntegrationPath' -or
     $hostSource -notmatch 'opencode_go_live\.json') {
-    throw 'REGRESSION_FAIL: live provider paths must be explicit fallbacks, not example data'
+    throw 'REGRESSION_FAIL: live provider paths must be configurable or relative, never developer-specific absolute paths'
 }
 if ($hostSource -notmatch 'Get-ActiveQuotaDataPath' -or
     $hostSource -notmatch 'ExplicitDataSources') {
@@ -228,12 +232,27 @@ if ($installerSource -notmatch 'LicenseFile=' -or
 }
 if ($workflowSource -notmatch 'QuotaDock-Setup-\*\.exe' -or
     $workflowSource -notmatch 'QuotaDock-v\$version\.zip' -or
-    $workflowSource -notmatch 'gh @args') {
+    $workflowSource -notmatch 'gh @args' -or
+    $workflowSource -notmatch 'Publish current update manifest to main' -or
+    $workflowSource -notmatch 'releases/download') {
     throw 'REGRESSION_FAIL: release workflow must publish both installer and portable/update ZIP'
 }
 if ($downloadGuide -notmatch 'QuotaDock-Setup-X\.Y\.Z\.exe' -or
     $downloadGuide -notmatch '便携/更新' -or
     $downloadGuide -notmatch '\.vbs') {
     throw 'REGRESSION_FAIL: download guide must distinguish installer, ZIP and internal VBS launcher'
+}
+$buildUpdateSource = Get-Content -LiteralPath (Join-Path $root 'packaging\build_update_package.ps1') -Raw -Encoding UTF8
+if ($buildUpdateSource -match 'raw\.githubusercontent\.com/.*/dist/' -or
+    $buildUpdateSource -notmatch 'releases/download') {
+    throw 'REGRESSION_FAIL: update packages must be downloaded from versioned GitHub Release assets'
+}
+$versionText = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw -Encoding UTF8).Trim()
+$distPath = Join-Path $root 'dist'
+if (Test-Path -LiteralPath $distPath) {
+    $oldPackages = @(Get-ChildItem -LiteralPath $distPath -Filter 'QuotaDock-v*.zip' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne ('QuotaDock-v' + $versionText + '.zip') })
+    if ($oldPackages.Count -gt 0) {
+        throw ('REGRESSION_FAIL: source tree contains stale versioned ZIPs: ' + (($oldPackages | Select-Object -ExpandProperty Name) -join ', '))
+    }
 }
 Write-Output 'QUOTADOCK_SELFTEST_PASS'

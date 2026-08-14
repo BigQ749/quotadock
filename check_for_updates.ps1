@@ -44,18 +44,30 @@ function Get-LatestReleaseFromManifest {
     $headers = @{ 'User-Agent' = 'QuotaDock-Update-Checker' }
     $manifestUri = 'https://raw.githubusercontent.com/' + $repository + '/main/update-manifest.json'
     $manifest = Invoke-RestMethod -Uri $manifestUri -Headers $headers -TimeoutSec 15
-    $tag = ([string]$manifest.version).Trim()
+    return Convert-ManifestToUpdateRelease $manifest
+}
+
+function Convert-ManifestToUpdateRelease {
+    param($Manifest)
+    $tag = ([string]$Manifest.version).Trim()
     if ($null -eq (Normalize-Version $tag)) {
         throw ('远端更新清单版本无效：' + $tag)
     }
     return [pscustomobject]@{
         tag_name     = $tag
         name         = 'QuotaDock ' + $tag
-        html_url     = [string]$manifest.releaseUrl
-        download_url = [string]$manifest.downloadUrl
-        sha256       = ([string]$manifest.sha256).Trim().ToLowerInvariant()
-        body         = [string]$manifest.notes
+        html_url     = [string]$Manifest.releaseUrl
+        download_url = [string]$Manifest.downloadUrl
+        sha256       = ([string]$Manifest.sha256).Trim().ToLowerInvariant()
+        body         = [string]$Manifest.notes
     }
+}
+
+function Get-LatestReleaseFromReleaseManifest {
+    $headers = @{ 'User-Agent' = 'QuotaDock-Update-Checker' }
+    $manifestUri = 'https://github.com/' + $repository + '/releases/latest/download/update-manifest.json'
+    $manifest = Invoke-RestMethod -Uri $manifestUri -Headers $headers -TimeoutSec 15
+    return Convert-ManifestToUpdateRelease $manifest
 }
 
 function Get-LatestReleaseFromVersionFile {
@@ -68,10 +80,32 @@ function Get-LatestReleaseFromVersionFile {
     return [pscustomobject]@{
         tag_name = $tag
         name     = $tag
-        html_url = 'https://github.com/' + $repository + '/releases'
-        download_url = 'https://raw.githubusercontent.com/' + $repository + '/main/dist/QuotaDock-v' + $tag.TrimStart('v') + '.zip'
+        html_url = 'https://github.com/' + $repository + '/releases/tag/v' + $tag.TrimStart('v')
+        download_url = 'https://github.com/' + $repository + '/releases/download/v' + $tag.TrimStart('v') + '/QuotaDock-v' + $tag.TrimStart('v') + '.zip'
         sha256 = ''
         body = ''
+    }
+}
+
+function Convert-GitHubReleaseToUpdateRelease {
+    param($Release)
+    $tag = ([string]$Release.tag_name).Trim()
+    $normalized = Normalize-Version $tag
+    if ($null -eq $normalized) {
+        throw ('GitHub Release 版本无效：' + $tag)
+    }
+    $versionText = $normalized.ToString()
+    $assetName = 'QuotaDock-v' + $versionText + '.zip'
+    $asset = @($Release.assets) | Where-Object { [string]$_.name -eq $assetName } | Select-Object -First 1
+    $digest = if ($null -ne $asset) { ([string]$asset.digest).Trim() } else { '' }
+    $sha256 = if ($digest -match '^sha256:([A-Fa-f0-9]{64})$') { $Matches[1].ToLowerInvariant() } else { '' }
+    [pscustomobject]@{
+        tag_name     = $tag
+        name         = [string]$Release.name
+        html_url     = [string]$Release.html_url
+        download_url = if ($null -ne $asset) { [string]$asset.browser_download_url } else { '' }
+        sha256       = $sha256
+        body         = [string]$Release.body
     }
 }
 
@@ -85,9 +119,18 @@ function Get-LatestRelease {
     catch {
         $manifestError = $_.Exception.Message
     }
+    try {
+        # The latest Release also carries a manifest. This keeps update checks
+        # usable if the main branch raw file is temporarily stale or unavailable.
+        return Get-LatestReleaseFromReleaseManifest
+    }
+    catch {
+        $releaseManifestError = $_.Exception.Message
+    }
     $headers = @{ 'User-Agent' = 'QuotaDock-Update-Checker'; Accept = 'application/vnd.github+json' }
     try {
-        return Invoke-RestMethod -Uri ('https://api.github.com/repos/' + $repository + '/releases/latest') -Headers $headers -TimeoutSec 15
+        $release = Invoke-RestMethod -Uri ('https://api.github.com/repos/' + $repository + '/releases/latest') -Headers $headers -TimeoutSec 15
+        return Convert-GitHubReleaseToUpdateRelease $release
     }
     catch {
         $apiError = $_.Exception.Message
@@ -97,7 +140,7 @@ function Get-LatestRelease {
             return Get-LatestReleaseFromVersionFile
         }
         catch {
-            throw ('更新清单：' + $manifestError + '；GitHub API：' + $apiError + '；VERSION 兜底：' + $_.Exception.Message)
+            throw ('更新清单：' + $manifestError + '；Release 清单：' + $releaseManifestError + '；GitHub API：' + $apiError + '；VERSION 兜底：' + $_.Exception.Message)
         }
     }
 }

@@ -3,9 +3,18 @@ $root = Split-Path -Parent $PSScriptRoot
 $manifestPath = Join-Path $root 'update-manifest.json'
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $version = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw -Encoding UTF8).Trim()
+$repository = [Environment]::GetEnvironmentVariable('QUOTADOCK_UPDATE_REPO')
+if ([string]::IsNullOrWhiteSpace($repository)) { $repository = 'BigQ749/quotadock' }
 $packagePath = Join-Path $root ('dist\QuotaDock-v' + $version + '.zip')
 if ([string]$manifest.version -ne $version) {
     throw ('更新清单版本不匹配: ' + $manifest.version + ' / ' + $version)
+}
+$expectedDownloadUrl = 'https://github.com/' + $repository + '/releases/download/v' + $version + '/QuotaDock-v' + $version + '.zip'
+if ([string]$manifest.downloadUrl -ne $expectedDownloadUrl) {
+    throw ('更新清单下载地址必须指向对应 Release 资产: ' + $manifest.downloadUrl)
+}
+if ([string]$manifest.downloadUrl -match 'raw\.githubusercontent\.com/.*/dist/') {
+    throw '更新清单不能再指向源码仓库中的 dist 二进制包。'
 }
 if (-not (Test-Path -LiteralPath $packagePath)) {
     throw ('缺少直接更新包: ' + $packagePath)

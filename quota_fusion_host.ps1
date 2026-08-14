@@ -40,6 +40,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$script:IntegrationRoot = Split-Path -Parent $baseDir
 $requestFile = Join-Path $env:TEMP 'quotadock-host-requests.txt'
 $errorLog = Join-Path $env:TEMP 'quotadock-host-error.log'
 $paintLog = Join-Path $env:TEMP 'quotadock-host-paint.log'
@@ -222,13 +223,18 @@ function Resolve-QuotaDockSourcePath {
 }
 
 $localDataRoot = Join-Path $appStateRoot 'data'
+function Get-QuotaDockSiblingIntegrationPath {
+    param([string]$RelativePath)
+    return Join-Path $script:IntegrationRoot $RelativePath
+}
+
 function Get-QuotaDockDataFallback {
     param([string]$LocalName, [string]$ExampleName)
     $candidates = New-Object System.Collections.ArrayList
     [void]$candidates.Add((Join-Path $localDataRoot $LocalName))
     switch ($LocalName) {
-        'codex.json' { [void]$candidates.Add('D:\AI\codex-quota-desktop\codex_quota_live.json') }
-        'grok.json' { [void]$candidates.Add('D:\grok-weekly-quota-widget\data.json') }
+        'codex.json' { [void]$candidates.Add((Get-QuotaDockSiblingIntegrationPath 'codex-quota-desktop\codex_quota_live.json')) }
+        'grok.json' { [void]$candidates.Add((Get-QuotaDockSiblingIntegrationPath 'grok-weekly-quota-widget\data.json')) }
         'opencode_go.json' { [void]$candidates.Add((Join-Path $baseDir 'opencode_go_live.json')) }
     }
     foreach ($candidate in @($candidates)) {

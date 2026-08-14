@@ -11,8 +11,6 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 
 ![QuotaDock 管理中心](docs/images/quotadock-center.png)
 
-![多平台融合浮窗](docs/images/quota-fusion-window.png)
-
 ## 为什么是 QuotaDock
 
 | ✦ | 能力 | 体验 |
@@ -56,7 +54,7 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 
 第一次部署的用户强烈建议先看 [新手部署指南（实测经验版）](docs/deployment-guide.md)：里面包含环境检查、首次同步、关掉浏览器后的后台同步，以及“PowerShell 7+ 弹窗”“同步时间不更新”等真实踩坑的解决办法。
 
-安装器由 `.github/workflows/release.yml` 在 Windows runner 上使用 Inno Setup 构建；源码仓库不提交编译机的个人数据。
+安装器由 `.github/workflows/release.yml` 在 Windows runner 上使用 Inno Setup 构建；安装器、便携 ZIP 和校验文件只放在 GitHub Releases，源码仓库不提交编译机的个人数据或历史下载包。
 
 ## 第一次配置额度数据
 

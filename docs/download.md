@@ -1,6 +1,6 @@
 # 下载选择指南
 
-QuotaDock 当前是 Windows-first 桌面应用。普通用户应下载带 `Setup` 的安装器；ZIP 只用于便携运行、故障回退和应用内部更新。下载页只发布已经实际构建和验证过的文件，不用“Mac 版”“ARM 原生版”等名称包装未实现的版本。
+QuotaDock 当前是 Windows-first 桌面应用。普通用户应下载带 `Setup` 的安装器；ZIP 只用于便携运行、故障回退和应用内部更新。下载页只发布已经实际构建和验证过的文件，不用“Mac 版”“ARM 原生版”等名称包装未实现的版本。源码分支不保存历史安装包，所有发行二进制统一放在 GitHub Releases，避免把旧版本混在代码下载里。
 
 ## 应该下载什么
 
@@ -35,7 +35,7 @@ Get-Content .\SHA256SUMS.txt
 
 ## 更新
 
-客户端读取公开的 `update-manifest.json`。新版本提醒后，用户点击“立即更新”，QuotaDock 会直接下载版本化 ZIP、校验 SHA-256、等待当前中心退出、替换程序文件并自动重启；用户数据仍保存在 `%LOCALAPPDATA%\QuotaDock`，不会上传到仓库。
+客户端读取公开的 `update-manifest.json`。清单指向对应 GitHub Release 的版本化 ZIP，而不是源码分支里的旧构建目录。新版本提醒后，用户点击“立即更新”，QuotaDock 会直接下载版本化 ZIP、校验 SHA-256、等待当前中心退出、替换程序文件并自动重启；用户数据仍保存在 `%LOCALAPPDATA%\QuotaDock`，不会上传到仓库。
 
 ## 为什么没有 Mac/Linux 下载项
 

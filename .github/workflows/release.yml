@@ -73,6 +73,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in @('.exe', '.zip', '.txt') })
+          $files += Get-Item -LiteralPath (Join-Path $pwd 'update-manifest.json')
           $notes = Join-Path $pwd "docs\releases\v$env:QUOTADOCK_VERSION.md"
           if (-not (Test-Path -LiteralPath $notes)) { throw "Missing release notes: $notes" }
           $args = @(
@@ -85,3 +86,30 @@ jobs:
           $args += @($files.FullName)
           & gh @args
           if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE" }
+
+      - name: Publish current update manifest to main
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:QUOTADOCK_VERSION
+          $manifestPath = Join-Path $pwd 'update-manifest.json'
+          if (-not (Test-Path -LiteralPath $manifestPath)) { throw "Missing generated update manifest: $manifestPath" }
+          $manifestJson = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
+          $manifest = $manifestJson | ConvertFrom-Json
+          if ([string]$manifest.version -ne $version) { throw "Generated manifest version does not match VERSION: $($manifest.version) / $version" }
+          if ([string]$manifest.downloadUrl -notmatch ('/releases/download/v' + [regex]::Escape($version) + '/QuotaDock-v' + [regex]::Escape($version) + '\.zip$')) {
+            throw 'Generated manifest must point to the versioned GitHub Release asset.'
+          }
+          $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($manifestJson))
+          $current = gh api "repos/$env:GITHUB_REPOSITORY/contents/update-manifest.json?ref=main" | ConvertFrom-Json
+          $request = [ordered]@{
+            message = "chore: publish update manifest for v$version"
+            content = $encoded
+            branch  = 'main'
+            sha     = [string]$current.sha
+          } | ConvertTo-Json -Compress
+          $response = $request | gh api "repos/$env:GITHUB_REPOSITORY/contents/update-manifest.json" --method PUT --input - | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace([string]$response.commit.sha)) { throw 'GitHub did not return the update-manifest commit.' }
+          Write-Output "UPDATE_MANIFEST_PUBLISHED=$($response.commit.sha)"

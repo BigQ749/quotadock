@@ -5,6 +5,7 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$script:IntegrationRoot = Split-Path -Parent $root
 $hostPath = Join-Path $root 'quota_fusion_host.ps1'
 $sourceConfigPath = Join-Path $env:LOCALAPPDATA 'QuotaDock\quota_sources.json'
 $powershell7 = (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source
@@ -42,6 +43,11 @@ function Resolve-ConfiguredPath {
         return ''
     }
     return [Environment]::ExpandEnvironmentVariables($value.Trim())
+}
+
+function Get-QuotaDockSiblingIntegrationPath {
+    param([string]$RelativePath)
+    return Join-Path $script:IntegrationRoot $RelativePath
 }
 
 function Get-QuotaDockSyncProcesses {
@@ -108,7 +114,7 @@ $script:ProcessSnapshot |
 if ($Provider -eq 'codex') {
     $loopPath = Resolve-ConfiguredPath 'QUOTADOCK_CODEX_SYNC' 'codexSyncScript'
     if ([string]::IsNullOrWhiteSpace($loopPath)) {
-        $loopPath = 'D:\AI\codex-quota-desktop\codex_quota_fetch_loop.ps1'
+        $loopPath = Get-QuotaDockSiblingIntegrationPath 'codex-quota-desktop\codex_quota_fetch_loop.ps1'
     }
     $loop = Keep-One-QuotaDockSyncProcess '*codex_quota_fetch_loop.ps1*' $loopPath 'pwsh.exe'
     if ($null -eq $loop -and (Test-Path -LiteralPath $loopPath)) {
@@ -118,7 +124,7 @@ if ($Provider -eq 'codex') {
 elseif ($Provider -eq 'grok') {
     $monitorPath = Resolve-ConfiguredPath 'QUOTADOCK_GROK_SYNC' 'grokSyncScript'
     if ([string]::IsNullOrWhiteSpace($monitorPath)) {
-        $monitorPath = 'D:\grok-weekly-quota-widget\monitor.py'
+        $monitorPath = Get-QuotaDockSiblingIntegrationPath 'grok-weekly-quota-widget\monitor.py'
     }
     $sync = Keep-One-QuotaDockSyncProcess '*grok-weekly-quota-widget*monitor.py*--sync-only*' $monitorPath 'pythonw.exe'
     $pythonCandidates = @(
