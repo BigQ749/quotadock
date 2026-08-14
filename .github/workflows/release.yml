@@ -60,6 +60,17 @@ jobs:
           Write-Output "INSTALLER=$installer"
           Write-Output "PORTABLE=$portable"
 
+      - name: Verify generated update manifest
+        shell: pwsh
+        run: |
+          $version = $env:QUOTADOCK_VERSION
+          $manifest = Get-Content -LiteralPath (Join-Path $pwd 'update-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+          $portable = Join-Path $pwd "dist\QuotaDock-v$version.zip"
+          $actualSha256 = (Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ([string]$manifest.version -ne $version) { throw "Manifest version mismatch: $($manifest.version) / $version" }
+          if ([string]$manifest.sha256 -ne $actualSha256) { throw "Manifest SHA-256 mismatch: $($manifest.sha256) / $actualSha256" }
+          Write-Output "UPDATE_MANIFEST_SHA256=$actualSha256"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

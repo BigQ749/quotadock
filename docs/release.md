@@ -9,6 +9,8 @@
 5. `packaging/QuotaDock.iss` 会由 `packaging/build.ps1` 从 `VERSION` 临时生成版本定义，不要再手工维护第二个版本号。
 6. 确认 `docs/releases/vX.Y.Z.md` 已写清修复、已知边界和下载文件。
 
+如果本机已经拉取过 Release 后的 `main`，更新清单里的 SHA-256 代表 GitHub runner 上传的真实 ZIP；不同机器重新压缩出的本地 ZIP 可能因文件时间元数据不同而哈希不同。`selftest.ps1` 会检查本地包内容并提示差异，Release workflow 则会在上传前强制要求清单哈希与 runner 生成的 ZIP 完全一致。
+
 ## 发布
 
 ```powershell

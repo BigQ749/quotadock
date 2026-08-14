@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$versionText = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw -Encoding UTF8).Trim()
+$localPackagePath = Join-Path $root ('dist\QuotaDock-v' + $versionText + '.zip')
 $powershellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($null -eq $powershellCommand -or [string]::IsNullOrWhiteSpace($powershellCommand.Source)) {
     throw 'SELFTEST_ENV_FAIL: PowerShell 7+（pwsh.exe）未找到。'
@@ -40,8 +42,13 @@ Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'install_quota_update.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'tests/floater_menu_smoke.ps1' @()
-Invoke-QuotaDockSelfTest 'tests/update_package_smoke.ps1' @()
-Invoke-QuotaDockSelfTest 'tests/update_install_e2e_smoke.ps1' @()
+if (Test-Path -LiteralPath $localPackagePath -PathType Leaf) {
+    Invoke-QuotaDockSelfTest 'tests/update_package_smoke.ps1' @()
+    Invoke-QuotaDockSelfTest 'tests/update_install_e2e_smoke.ps1' @()
+}
+else {
+    Write-Output ('UPDATE_PACKAGE_TESTS_SKIP no local package: ' + $localPackagePath)
+}
 
 $centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -Raw -Encoding UTF8
 $hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
@@ -247,7 +254,6 @@ if ($buildUpdateSource -match 'raw\.githubusercontent\.com/.*/dist/' -or
     $buildUpdateSource -notmatch 'releases/download') {
     throw 'REGRESSION_FAIL: update packages must be downloaded from versioned GitHub Release assets'
 }
-$versionText = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw -Encoding UTF8).Trim()
 $distPath = Join-Path $root 'dist'
 if (Test-Path -LiteralPath $distPath) {
     $oldPackages = @(Get-ChildItem -LiteralPath $distPath -Filter 'QuotaDock-v*.zip' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne ('QuotaDock-v' + $versionText + '.zip') })

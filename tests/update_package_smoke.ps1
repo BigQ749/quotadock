@@ -1,3 +1,7 @@
+param(
+    [switch]$RequireManifestHash
+)
+
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $manifestPath = Join-Path $root 'update-manifest.json'
@@ -24,7 +28,10 @@ if ([string]$manifest.sha256 -notmatch '^[A-Fa-f0-9]{64}$') {
 }
 $actualHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualHash -ne ([string]$manifest.sha256).ToLowerInvariant()) {
-    throw ('更新包 SHA-256 不匹配: ' + $actualHash)
+    if ($RequireManifestHash) {
+        throw ('更新包 SHA-256 不匹配: ' + $actualHash + ' / ' + [string]$manifest.sha256)
+    }
+    Write-Output ('UPDATE_PACKAGE_LOCAL_HASH_NOTE release=' + ([string]$manifest.sha256).ToLowerInvariant() + ' local=' + $actualHash)
 }
 $inspectRoot = Join-Path $env:TEMP ('quotadock-package-smoke-' + $PID)
 try {
