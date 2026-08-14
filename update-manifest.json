@@ -1,9 +1,9 @@
 {
-  "version": "0.1.10",
+  "version": "0.1.11",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.10.zip",
-  "sha256": "ecb56c196fdb2550904c9440a6e2afe0c496c94c06582e1057638be22a80265d",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.10",
-  "notes": "修复添加其他平台对话框被置顶管理中心遮挡导致卡死的问题，并移除“已吸附”状态文字。"
+  "downloadUrl": "https://raw.githubusercontent.com/BigQ749/quotadock/main/dist/QuotaDock-v0.1.11.zip",
+  "sha256": "f9f5f00ca31aa3c87ed7600731ae4f5545715c7bbcd35b52fa4bfdbd7c0eb2b2",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.11",
+  "notes": "修复桌面启动器对商店版 PowerShell 7 的误判弹窗，并新增新手部署指南。"
 }
