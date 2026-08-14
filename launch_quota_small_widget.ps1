@@ -6,6 +6,11 @@
 $ErrorActionPreference = 'SilentlyContinue'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:IntegrationRoot = Split-Path -Parent $root
+$pathResolverPath = Join-Path $root 'quota_dock_paths.ps1'
+if (-not (Test-Path -LiteralPath $pathResolverPath -PathType Leaf)) {
+    throw ('缺少共享路径解析器：' + $pathResolverPath)
+}
+. $pathResolverPath
 $hostPath = Join-Path $root 'quota_fusion_host.ps1'
 $sourceConfigPath = Join-Path $env:LOCALAPPDATA 'QuotaDock\quota_sources.json'
 $powershell7 = (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source
@@ -47,7 +52,15 @@ function Resolve-ConfiguredPath {
 
 function Get-QuotaDockSiblingIntegrationPath {
     param([string]$RelativePath)
-    return Join-Path $script:IntegrationRoot $RelativePath
+    $resolved = Resolve-QuotaDockIntegrationPath -AppRoot $root -RelativePath $RelativePath
+    if (-not [string]::IsNullOrWhiteSpace($resolved)) {
+        return $resolved
+    }
+    $candidates = @(Get-QuotaDockIntegrationCandidates -AppRoot $root -RelativePath $RelativePath)
+    if ($candidates.Count -gt 0) {
+        return [string]$candidates[0]
+    }
+    return ''
 }
 
 function Get-QuotaDockSyncProcesses {

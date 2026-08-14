@@ -1,9 +1,9 @@
 {
-  "version": "0.1.12",
+  "version": "0.1.13",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.1.12/QuotaDock-v0.1.12.zip",
-  "sha256": "71a023b350f0b54d9b3988fb9886ba0b15783b48afa959ad54f08223e4869875",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.12",
-  "notes": "# QuotaDock v0.1.12\r\n\r\n## 发布前整理\r\n\r\n- 移除源码分支中的历史安装包和便携 ZIP；旧版本仍可从 GitHub Releases 回退。\r\n- 更新器改为下载对应 Release 的真实 ZIP，并校验该 Release 资产的 SHA-256。\r\n- 发布工作流会在 Release 创建后自动回写 `main/update-manifest.json`，避免源码包与 Release 包哈希不一致。\r\n\r\n## 修复与改进\r\n\r\n- 修正 v0.1.11 发布说明中部署指南的链接路径。\r\n- 增强 GitHub Release、Release 清单和 VERSION 三级更新检查兜底。\r\n- 保留 PowerShell 7+ 启动器、安装向导、开机启动选项与本地数据保留逻辑。\r\n\r\n## 发布内容\r\n\r\n- `QuotaDock-Setup-0.1.12.exe`：标准 Windows 安装器。\r\n- `QuotaDock-v0.1.12.zip`：便携版/本地更新包。\r\n- `SHA256SUMS.txt`：下载校验值。"
+  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.1.13/QuotaDock-v0.1.13.zip",
+  "sha256": "13cc0010f1c52cf749e22d6ccda412d1123f1df754fc8b64aa25419bd0e9bdc6",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.13",
+  "notes": "# QuotaDock v0.1.13\n\n## 修复\n\n- 自动向上查找 Codex 与 Grok 的外部同步目录，兼容嵌套安装路径。\n- 更新并重启 QuotaDock 后，恢复原有 Codex/Grok 同步器启动流程。\n- 同步器重新连接期间继续显示上一次成功同步的额度数据。\n\n## 发布内容\n\n- `QuotaDock-Setup-0.1.13.exe`：Windows 安装器。\n- `QuotaDock-v0.1.13.zip`：便携版/本地更新包。\n- `SHA256SUMS.txt`：下载校验值。"
 }

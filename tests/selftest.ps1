@@ -42,6 +42,7 @@ Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'install_quota_update.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'tests/floater_menu_smoke.ps1' @()
+Invoke-QuotaDockSelfTest 'tests/path_discovery_smoke.ps1' @()
 if (Test-Path -LiteralPath $localPackagePath -PathType Leaf) {
     Invoke-QuotaDockSelfTest 'tests/update_package_smoke.ps1' @()
     Invoke-QuotaDockSelfTest 'tests/update_install_e2e_smoke.ps1' @()
@@ -52,6 +53,7 @@ else {
 
 $centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -Raw -Encoding UTF8
 $hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
+$pathSource = Get-Content -LiteralPath (Join-Path $root 'quota_dock_paths.ps1') -Raw -Encoding UTF8
 $launcherSource = (Get-ChildItem -LiteralPath $root -Filter 'launch_*.vbs' -File | Get-Content -Raw) -join "`n"
 if ($centerSource -notmatch 'Resolve-QuotaDockPowerShell' -or $centerSource -notmatch 'pwsh\.exe') {
     throw 'REGRESSION_FAIL: QuotaDock must resolve and launch PowerShell 7+ via pwsh.exe'
@@ -169,6 +171,12 @@ if ($hostSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or
     $launcherSource -notmatch 'Get-QuotaDockSiblingIntegrationPath' -or
     $hostSource -notmatch 'opencode_go_live\.json') {
     throw 'REGRESSION_FAIL: live provider paths must be configurable or relative, never developer-specific absolute paths'
+}
+if ($pathSource -notmatch 'Get-QuotaDockAncestorRoots' -or
+    $pathSource -notmatch 'Resolve-QuotaDockIntegrationPath' -or
+    $hostSource -notmatch 'quota_dock_paths\.ps1' -or
+    $launcherSource -notmatch 'quota_dock_paths\.ps1') {
+    throw 'REGRESSION_FAIL: host and launcher must share the automatic provider-path resolver'
 }
 if ($hostSource -notmatch 'Get-ActiveQuotaDataPath' -or
     $hostSource -notmatch 'ExplicitDataSources') {

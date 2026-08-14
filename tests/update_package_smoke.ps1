@@ -36,7 +36,7 @@ if ($actualHash -ne ([string]$manifest.sha256).ToLowerInvariant()) {
 $inspectRoot = Join-Path $env:TEMP ('quotadock-package-smoke-' + $PID)
 try {
     Expand-Archive -LiteralPath $packagePath -DestinationPath $inspectRoot -Force
-    foreach ($name in @('quota_center.ps1', 'quota_fusion_host.ps1', 'check_for_updates.ps1', 'install_quota_update.ps1', 'VERSION')) {
+    foreach ($name in @('quota_center.ps1', 'quota_fusion_host.ps1', 'quota_dock_paths.ps1', 'check_for_updates.ps1', 'install_quota_update.ps1', 'VERSION')) {
         if (-not (Test-Path -LiteralPath (Join-Path $inspectRoot $name))) {
             throw ('更新包缺少运行文件: ' + $name)
         }

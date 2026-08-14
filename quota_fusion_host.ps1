@@ -41,6 +41,11 @@ Add-Type -AssemblyName System.Drawing
 
 $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:IntegrationRoot = Split-Path -Parent $baseDir
+$pathResolverPath = Join-Path $baseDir 'quota_dock_paths.ps1'
+if (-not (Test-Path -LiteralPath $pathResolverPath -PathType Leaf)) {
+    throw ('缺少共享路径解析器：' + $pathResolverPath)
+}
+. $pathResolverPath
 $requestFile = Join-Path $env:TEMP 'quotadock-host-requests.txt'
 $errorLog = Join-Path $env:TEMP 'quotadock-host-error.log'
 $paintLog = Join-Path $env:TEMP 'quotadock-host-paint.log'
@@ -225,7 +230,15 @@ function Resolve-QuotaDockSourcePath {
 $localDataRoot = Join-Path $appStateRoot 'data'
 function Get-QuotaDockSiblingIntegrationPath {
     param([string]$RelativePath)
-    return Join-Path $script:IntegrationRoot $RelativePath
+    $resolved = Resolve-QuotaDockIntegrationPath -AppRoot $baseDir -RelativePath $RelativePath
+    if (-not [string]::IsNullOrWhiteSpace($resolved)) {
+        return $resolved
+    }
+    $candidates = @(Get-QuotaDockIntegrationCandidates -AppRoot $baseDir -RelativePath $RelativePath)
+    if ($candidates.Count -gt 0) {
+        return [string]$candidates[0]
+    }
+    return ''
 }
 
 function Get-QuotaDockDataFallback {
@@ -288,6 +301,16 @@ function Get-ActiveQuotaDataPath {
         if (Test-Path -LiteralPath $localPath -PathType Leaf) {
             return $localPath
         }
+    }
+    $autoPath = switch ($Provider) {
+        'codex' { Get-QuotaDockDataFallback 'codex.json' 'codex.quota.example.json' }
+        'grok' { Get-QuotaDockDataFallback 'grok.json' 'grok.quota.example.json' }
+        'opencode' { Get-QuotaDockDataFallback 'opencode_go.json' 'opencode_go.quota.example.json' }
+        default { $null }
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$autoPath) -and
+        (Test-Path -LiteralPath $autoPath -PathType Leaf)) {
+        return $autoPath
     }
     return $configuredPath
 }
