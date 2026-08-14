@@ -3,7 +3,7 @@
   "channel": "stable",
   "packageType": "zip",
   "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.1.13/QuotaDock-v0.1.13.zip",
-  "sha256": "13cc0010f1c52cf749e22d6ccda412d1123f1df754fc8b64aa25419bd0e9bdc6",
+  "sha256": "fe9f7265a8bc225d65f598481d355f81bbeeec66a801256ff1aed39a086f19c4",
   "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.1.13",
-  "notes": "# QuotaDock v0.1.13\n\n## 修复\n\n- 自动向上查找 Codex 与 Grok 的外部同步目录，兼容嵌套安装路径。\n- 更新并重启 QuotaDock 后，恢复原有 Codex/Grok 同步器启动流程。\n- 同步器重新连接期间继续显示上一次成功同步的额度数据。\n\n## 发布内容\n\n- `QuotaDock-Setup-0.1.13.exe`：Windows 安装器。\n- `QuotaDock-v0.1.13.zip`：便携版/本地更新包。\n- `SHA256SUMS.txt`：下载校验值。"
+  "notes": "# QuotaDock v0.1.13\r\n\r\n## 修复\r\n\r\n- 自动向上查找 Codex 与 Grok 的外部同步目录，兼容嵌套安装路径。\r\n- 更新并重启 QuotaDock 后，恢复原有 Codex/Grok 同步器启动流程。\r\n- 同步器重新连接期间继续显示上一次成功同步的额度数据。\r\n\r\n## 发布内容\r\n\r\n- `QuotaDock-Setup-0.1.13.exe`：Windows 安装器。\r\n- `QuotaDock-v0.1.13.zip`：便携版/本地更新包。\r\n- `SHA256SUMS.txt`：下载校验值。"
 }
