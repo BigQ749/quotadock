@@ -152,7 +152,7 @@ struct DashboardView: View {
             }
         }
         .padding(20)
-        .frame(width: 480, minHeight: 220, maxHeight: 700)
+        .frame(minWidth: 480, idealWidth: 480, maxWidth: 480, minHeight: 220, maxHeight: 700)
         .background(.ultraThinMaterial)
     }
 }
