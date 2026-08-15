@@ -5,7 +5,7 @@
 ## 当前能力
 
 - macOS 13 Ventura 或更新版本
-- Apple Silicon 与 Intel Mac 均由同一 Swift Package 构建目标覆盖
+- 当前 v0.2.1 发布包已在 Apple Silicon arm64 runner 上真实构建；Intel x86_64 包尚未发布
 - 菜单栏入口、单个/多个额度卡片选择、统一浮动面板、每 60 秒重新读取本地快照
 - 支持 `providers.json` 的对象封装格式或数组格式
 - 不读取 Cookie，不在仓库中保存凭据，不假装 Windows 同步脚本可以直接在 macOS 运行

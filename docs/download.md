@@ -10,7 +10,8 @@ QuotaDock 现在按系统提供 Windows 安装器和 macOS 原生预览包。Win
 | Windows x86 | 同一个安装包 | Inno Setup 使用 x86 兼容模式；脚本依赖 PowerShell 7+ |
 | 便携/更新 | `QuotaDock-vX.Y.Z.zip` | 不显示安装向导；适合便携运行、回退和应用内部更新 |
 | Windows ARM64 | 暂无原生安装包 | 只有完成 ARM runner、安装测试和截图验收后才会发布 |
-| macOS 13+ Intel / Apple Silicon | `QuotaDock-macOS-vX.Y.Z.zip` | 原生 SwiftUI 菜单栏/浮动面板预览版；读取本地 `providers.json` |
+| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.1 已在 arm64 runner 验证，读取本地 `providers.json` |
+| macOS Intel (x86_64) | 暂无已验证包 | Intel 构建尚未完成真实 CI 构建；不要把 Apple Silicon 包当作 Intel/通用包 |
 | Linux | 暂不支持 | 当前没有 Linux UI 宿主与发行版 |
 
 如果 Release 页面没有 `QuotaDock-Setup-X.Y.Z.exe`，说明该版本的 Windows 构建还没有完成；不要把 ZIP 当成安装器。不要把 `SHA256SUMS.txt` 当作安装器。它用于下载后校验：

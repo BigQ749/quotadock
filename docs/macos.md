@@ -14,7 +14,7 @@ QuotaDock.app / NSPanel 浮动面板
 
 ## 下载与启动
 
-在 GitHub Release 下载 `QuotaDock-macOS-vX.Y.Z.zip`，解压后把 `QuotaDock.app` 拖入“应用程序”。首个预览包同时覆盖 Intel 与 Apple Silicon 的 Swift 构建目标；它要求 macOS 13 或更高版本。
+在 GitHub Release 下载 `QuotaDock-macOS-v0.2.1.zip`，解压后把 `QuotaDock.app` 拖入“应用程序”。当前已发布包是在 macOS 14 arm64 runner 上真实构建并验证的 Apple Silicon 版本，要求 macOS 13 或更高版本；Intel x86_64 构建尚未发布。
 
 当前包未做 Apple Developer ID 签名和公证，因此第一次打开可能需要在“系统设置 → 隐私与安全性”确认允许。不要从不明镜像下载，也不要绕过系统安全提示运行被修改过的副本。
 

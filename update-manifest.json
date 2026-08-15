@@ -5,5 +5,5 @@
   "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.1/QuotaDock-v0.2.1.zip",
   "sha256": "b13eb277bfe5ec16c4c435ac42322a4515a095506fd1a31bb851498612bd5785",
   "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.1",
-  "notes": "# QuotaDock v0.2.1\r\n\r\n## 修复\r\n\r\n- 修复 macOS SwiftUI 预览版在 macOS runner 上的浮动面板尺寸声明，确保 `QuotaDock-macOS-v0.2.1.zip` 能正常构建。\r\n- 保留 v0.2.0 的 Windows 菜单放大、右键藏边保护和短同步任务改动。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.1.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.1.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.1.zip`：macOS 原生预览包（Intel/Apple Silicon，macOS 13+）。\r\n\r\nmacOS 预览版仍然只读取 `~/Library/Application Support/QuotaDock/providers.json`，不复用 Windows 的 PowerShell、DPAPI、Chrome 桥接或账号同步路径；首次发布包尚未做 Apple Developer ID 签名和公证。"
+  "notes": "# QuotaDock v0.2.1\r\n\r\n## 修复\r\n\r\n- 修复 macOS SwiftUI 预览版在 macOS runner 上的浮动面板尺寸声明，确保 `QuotaDock-macOS-v0.2.1.zip` 能正常构建。\r\n- 保留 v0.2.0 的 Windows 菜单放大、右键藏边保护和短同步任务改动。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.1.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.1.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.1.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+；Intel x86_64 尚未发布）。\r\n\r\nmacOS 预览版仍然只读取 `~/Library/Application Support/QuotaDock/providers.json`，不复用 Windows 的 PowerShell、DPAPI、Chrome 桥接或账号同步路径；首次发布包尚未做 Apple Developer ID 签名和公证。"
 }

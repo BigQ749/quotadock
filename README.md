@@ -32,7 +32,8 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 | Windows 10/11 x64 | `QuotaDock-Setup-X.Y.Z.exe` | ✅ 主要验证目标 |
 | Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；请使用 PowerShell 7+ |
 | Windows ARM64 | 暂无原生包 | ⚠️ 未作为发行版承诺；不要把 x64 安装包称为 ARM 原生版 |
-| macOS 13+ Intel / Apple Silicon | `QuotaDock-macOS-vX.Y.Z.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；读取本地 `providers.json` |
+| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.1 已在 arm64 runner 验证，读取本地 `providers.json` |
+| macOS Intel (x86_64) | 暂无已验证包 | ⚠️ Intel 构建尚未完成真实 CI 构建，不把 Apple Silicon 包称为通用包 |
 | Linux | 暂不提供 | 🧭 当前没有 Linux UI 宿主与发行版 |
 
 安装器支持：选择安装目录、阅读 MIT 许可证、当前用户范围安装、不要求管理员权限、创建开始菜单/桌面快捷方式，以及可选的“登录 Windows 时自动启动”。安装不会删除 `%LOCALAPPDATA%\QuotaDock` 中的额度配置和凭据。
