@@ -25,7 +25,7 @@ git push origin "v$version"
 
 tag 触发 `.github/workflows/release.yml`。Windows runner 先生成直接更新 ZIP 和清单，再使用 Inno Setup 生成安装器和 SHA-256 校验文件，把发行文件附加到 GitHub Release，最后把“实际上传 ZIP 的哈希”和 Release 下载地址回写到 `main/update-manifest.json`。这样更新器校验的是 Release 里的真实文件，不依赖源码分支中的二进制副本。
 
-Release 标题使用“QuotaDock X.Y.Z · Windows 首发”格式；版本说明放在 `docs/releases/vX.Y.Z.md`，不要使用没有上下文的自动生成标题。当前仓库只发布实际支持的 Windows 构建，Mac/Linux/ARM64 在没有真实构建和验收前不放下载链接。
+Release 标题使用“QuotaDock X.Y.Z · Windows + macOS”格式；版本说明放在 `docs/releases/vX.Y.Z.md`，不要使用没有上下文的自动生成标题。工作流会先构建并发布 Windows 资产，再在 macOS runner 上构建并把 `QuotaDock-macOS-vX.Y.Z.zip` 附加到同一 Release。macOS 预览版的账号同步边界必须在版本说明中明确写出。
 
 ## 为什么 `main` 不保存旧下载包
 

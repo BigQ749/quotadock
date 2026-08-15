@@ -91,7 +91,7 @@ jobs:
             'release', 'create', $env:GITHUB_REF_NAME,
             '--repo', $env:GITHUB_REPOSITORY,
             '--verify-tag',
-            '--title', "QuotaDock $env:QUOTADOCK_VERSION · Windows 首发",
+            '--title', "QuotaDock $env:QUOTADOCK_VERSION · Windows + macOS",
             '--notes-file', $notes
           )
           $args += @($files.FullName)
@@ -124,3 +124,41 @@ jobs:
           $response = $request | gh api "repos/$env:GITHUB_REPOSITORY/contents/update-manifest.json" --method PUT --input - | ConvertFrom-Json
           if ([string]::IsNullOrWhiteSpace([string]$response.commit.sha)) { throw 'GitHub did not return the update-manifest commit.' }
           Write-Output "UPDATE_MANIFEST_PUBLISHED=$($response.commit.sha)"
+
+  macos-app:
+    needs: windows-installer
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version
+        shell: bash
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid VERSION: $version" >&2
+            exit 1
+          fi
+          echo "QUOTADOCK_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Build macOS app
+        shell: bash
+        run: ./packaging/macos/build_app.sh
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuotaDock-macOS-${{ env.QUOTADOCK_VERSION }}
+          path: dist/QuotaDock-macOS-v${{ env.QUOTADOCK_VERSION }}.zip
+
+      - name: Attach macOS asset to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            "dist/QuotaDock-macOS-v${QUOTADOCK_VERSION}.zip" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

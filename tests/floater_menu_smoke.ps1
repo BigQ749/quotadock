@@ -21,7 +21,7 @@ $menu = $form.ContextMenuStrip
 try {
     $menu.Show((New-Object System.Drawing.Point(120, 120)))
     [System.Windows.Forms.Application]::DoEvents()
-    if ($menu.IsDisposed -or $menu.Width -lt 380 -or $menu.Height -le 0) {
+    if ($menu.IsDisposed -or $menu.Width -lt 420 -or $menu.Height -le 0) {
         throw ('Unexpected menu state: disposed=' + $menu.IsDisposed + ' size=' + $menu.Width + 'x' + $menu.Height)
     }
     $state = $script:DockState[$form]

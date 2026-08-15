@@ -1934,9 +1934,9 @@ function New-FloatContextMenu {
     $menu.BackColor = $menuSurface
     $menu.ForeColor = $menuText
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(18, 16, 18, 16)
-    $menu.MinimumSize = New-Object System.Drawing.Size(380, 0)
-    $menu.Font = New-HostFont 'Microsoft YaHei UI' 17
+    $menu.Padding = New-Object System.Windows.Forms.Padding(20, 18, 20, 18)
+    $menu.MinimumSize = New-Object System.Drawing.Size(420, 0)
+    $menu.Font = New-HostFont 'Microsoft YaHei UI' 18
     $menu.Margin = New-Object System.Windows.Forms.Padding(8, 8, 8, 8)
     $renderer = New-Object System.Windows.Forms.ToolStripProfessionalRenderer
     $renderer.RoundedEdges = $true
@@ -1951,7 +1951,7 @@ function New-FloatContextMenu {
         $item.Font = $menu.Font
         $item.BackColor = $menuSurface
         $item.ForeColor = $menuText
-        $item.Padding = New-Object System.Windows.Forms.Padding(16, 12, 16, 12)
+        $item.Padding = New-Object System.Windows.Forms.Padding(18, 14, 18, 14)
     }
     [void]$menu.Items.Add($keepItem)
     [void]$menu.Items.Add($resumeItem)
@@ -2015,7 +2015,7 @@ function New-FloatContextMenu {
                 $cardItem.Font = $menu.Font
                 $cardItem.BackColor = $menuSurface
                 $cardItem.ForeColor = $menuText
-                $cardItem.Padding = New-Object System.Windows.Forms.Padding(16, 12, 16, 12)
+                $cardItem.Padding = New-Object System.Windows.Forms.Padding(18, 14, 18, 14)
                 $cardItem.Add_Click({
                     if ($null -ne $targetForm -and -not $targetForm.IsDisposed -and $null -ne $targetCard) {
                         Remove-CardFromFused $targetForm $targetCard $true
@@ -2038,7 +2038,24 @@ function New-FloatContextMenu {
         }
     }.GetNewClosure())
 
-    $menu.Add_Closing({
+    # Keep the revealed edge window alive while the pointer travels from the
+    # thin handle into the menu.  WinForms raises Form.MouseLeave before the
+    # menu receives MouseEnter, so the hold is armed in both places and is
+    # released only after ContextMenuStrip has fully closed.
+    $menu.Add_MouseEnter({
+        $owner = $Form
+        if ($null -eq $owner -or $owner.IsDisposed) {
+            return
+        }
+        $state = $dockStateMap[$owner]
+        if ($null -ne $state) {
+            $state.ContextMenuOpen = $true
+            $state.ContextMenuHold = $true
+            $state.AutoDockAt = $null
+        }
+    }.GetNewClosure())
+
+    $menu.Add_Closed({
         param($sender, $e)
         $owner = $Form
         if ($null -eq $owner -or $owner.IsDisposed) {
@@ -2174,6 +2191,9 @@ function New-FloatWindow {
     $form.Add_MouseLeave({
         param($sender, $e)
         $state = $script:DockState[$sender]
+        if ($null -ne $state -and ($state.ContextMenuOpen -or $state.ContextMenuHold)) {
+            return
+        }
         if ($null -ne $state -and $state.HoverRevealed -and $null -eq $script:DragState[$sender]) {
             Schedule-AutoDock $sender
         }

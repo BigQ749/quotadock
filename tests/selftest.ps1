@@ -121,7 +121,7 @@ if ($centerSource -notmatch 'Get-Process -Id \$hostPid' -or $centerSource -match
 if ($hostSource -notmatch '\$script:LastHostStateWriteAt' -or $hostSource -notmatch '\$script:CustomProvidersLastWriteUtc') {
     throw 'REGRESSION_FAIL: host polling must throttle state writes and cache custom-provider imports'
 }
-if ($centerSource -notmatch 'System\.Drawing\.Size\(340, 0\)' -or $centerSource -notmatch "New-UiFont 'Microsoft YaHei UI' 16") {
+if ($centerSource -notmatch 'System\.Drawing\.Size\(420, 0\)' -or $centerSource -notmatch "New-UiFont 'Microsoft YaHei UI' 18") {
     throw 'REGRESSION_FAIL: center context menus must use the enlarged menu scale'
 }
 if ($centerSource -notmatch '已打开' -or $centerSource -notmatch '已关闭') {
@@ -133,7 +133,7 @@ if ($centerSource -match '已打开 · 已吸附') {
 if ($centerSource -notmatch '\$dialog\.TopMost\s*=\s*\$true') {
     throw 'REGRESSION_FAIL: add-provider modal must stay above the TopMost center'
 }
-if ($hostSource -notmatch 'System\.Drawing\.Size\(380, 0\)' -or $hostSource -notmatch "New-HostFont 'Microsoft YaHei UI' 17") {
+if ($hostSource -notmatch 'System\.Drawing\.Size\(420, 0\)' -or $hostSource -notmatch "New-HostFont 'Microsoft YaHei UI' 18") {
     throw 'REGRESSION_FAIL: floater context menu must use the enlarged menu scale'
 }
 if ($centerSource -notmatch '\$menuText = \[System\.Drawing\.Color\]::FromArgb\(239, 243, 249\)' -or
@@ -146,8 +146,15 @@ if ($hostSource -notmatch '\$formCardsMap = \$script:FormCards' -or
 }
 if ($hostSource -notmatch '\$state\.ContextMenuHold = \$true' -or
     $hostSource -notmatch 'ContextMenuHold = \$false' -or
-    $hostSource -notmatch 'ContextMenuOpen = \$false') {
+    $hostSource -notmatch 'ContextMenuOpen = \$false' -or
+    $hostSource -notmatch '\$menu\.Add_Closed' -or
+    $hostSource -notmatch 'ContextMenuOpen -or \$state\.ContextMenuHold') {
     throw 'REGRESSION_FAIL: floater right-click must hold the revealed window open'
+}
+if ($centerSource -notmatch 'ClientSize = New-Object System.Drawing.Size\(820, 650\)' -or
+    $centerSource -notmatch "New-UiFont 'Microsoft YaHei UI' 16" -or
+    $centerSource -notmatch 'dialog\.AutoScaleMode = \[System\.Windows\.Forms\.AutoScaleMode\]::Dpi') {
+    throw 'REGRESSION_FAIL: add-provider dialog must use the enlarged DPI-aware layout'
 }
 $updateSource = Get-Content -LiteralPath (Join-Path $root 'check_for_updates.ps1') -Raw -Encoding UTF8
 if ($updateSource -notmatch 'Get-LatestReleaseFromVersionFile' -or
@@ -165,6 +172,11 @@ if ($centerSource -notmatch 'GitHub 更新接口暂时限流') {
     throw 'REGRESSION_FAIL: rate-limit update results must use a non-error informational message'
 }
 $launcherSource = Get-Content -LiteralPath (Join-Path $root 'launch_quota_small_widget.ps1') -Raw -Encoding UTF8
+if ($launcherSource -notmatch '\[switch\]\$Once' -or
+    $centerSource -notmatch 'Start-ProviderSyncOnce' -or
+    $centerSource -notmatch 'ProviderSyncTimer') {
+    throw 'REGRESSION_FAIL: provider sync must use on-demand one-shot launches instead of three resident loops'
+}
 if ($hostSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or
     $launcherSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or
     $hostSource -notmatch 'Get-QuotaDockSiblingIntegrationPath' -or
@@ -251,6 +263,25 @@ if ($workflowSource -notmatch 'QuotaDock-Setup-\*\.exe' -or
     $workflowSource -notmatch 'Publish current update manifest to main' -or
     $workflowSource -notmatch 'releases/download') {
     throw 'REGRESSION_FAIL: release workflow must publish both installer and portable/update ZIP'
+}
+$macMainPath = Join-Path $root 'macos\QuotaDockMac\Sources\QuotaDockMac\main.swift'
+$macPackagePath = Join-Path $root 'macos\QuotaDockMac\Package.swift'
+$macBuildPath = Join-Path $root 'packaging\macos\build_app.sh'
+$macMainSource = if (Test-Path -LiteralPath $macMainPath) { Get-Content -LiteralPath $macMainPath -Raw -Encoding UTF8 } else { '' }
+$macPackageSource = if (Test-Path -LiteralPath $macPackagePath) { Get-Content -LiteralPath $macPackagePath -Raw -Encoding UTF8 } else { '' }
+$macBuildSource = if (Test-Path -LiteralPath $macBuildPath) { Get-Content -LiteralPath $macBuildPath -Raw -Encoding UTF8 } else { '' }
+if ([string]::IsNullOrWhiteSpace($macMainSource) -or
+    $macPackageSource -notmatch 'macOS\(\.v13\)' -or
+    $macMainSource -notmatch 'NSStatusItem' -or
+    $macMainSource -notmatch 'NSPanel' -or
+    $macMainSource -notmatch 'providers\.json' -or
+    $macBuildSource -notmatch 'swift build -c release' -or
+    $workflowSource -notmatch 'macos-app' -or
+    $workflowSource -notmatch 'QuotaDock-macOS-v') {
+    throw 'REGRESSION_FAIL: macOS native app and release asset must be present'
+}
+if ($macMainSource -match 'D:\\AI\\|C:\\Users\\' -or $macBuildSource -match 'D:\\AI\\|C:\\Users\\') {
+    throw 'REGRESSION_FAIL: macOS sources must not contain developer-specific absolute paths'
 }
 if ($downloadGuide -notmatch 'QuotaDock-Setup-X\.Y\.Z\.exe' -or
     $downloadGuide -notmatch '便携/更新' -or

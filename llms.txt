@@ -1,6 +1,6 @@
 # QuotaDock AI-readable project index
 
-QuotaDock is a PowerShell 7+ + WinForms Windows desktop quota dashboard. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, and custom providers.
+QuotaDock is a local-first quota dashboard with a PowerShell 7+ + WinForms Windows app and a native AppKit + SwiftUI macOS preview. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, and custom providers.
 
 ## Core facts
 
@@ -12,6 +12,7 @@ QuotaDock is a PowerShell 7+ + WinForms Windows desktop quota dashboard. It mana
 - `opencode-go-quota-bridge/`: read-only page parser for the official OpenCode Go workspace page.
 - `packaging/QuotaDock.iss`: per-user Inno Setup installer.
 - `.github/workflows/release.yml`: tag-based Windows installer build and GitHub Release publication.
+- `macos/QuotaDockMac/`: native macOS menu-bar and floating-panel preview; reads local `providers.json` and does not reuse Windows credential/sync paths.
 
 ## Data and security boundary
 
@@ -23,7 +24,7 @@ Add a provider by registering a local JSON source in `quota_sources.json` or thr
 
 ## Release/update behavior
 
-`VERSION` is the source of truth. A matching `vX.Y.Z` tag triggers the Windows installer workflow. The client checks GitHub Releases at most once per 24 hours and shows a user-choice dialog; it does not silently install or upload local data.
+`VERSION` is the source of truth. A matching `vX.Y.Z` tag triggers Windows installer/update artifacts and a macOS ZIP build. The Windows client checks GitHub Releases at most once per 24 hours and shows a user-choice dialog; it does not silently install or upload local data. The macOS preview currently reads local snapshots only.
 
 ## Read next
 
@@ -33,4 +34,5 @@ Add a provider by registering a local JSON source in `quota_sources.json` or thr
 - `docs/deployment-guide.md`
 - `docs/troubleshooting.md`
 - `docs/release.md`
+- `docs/macos.md`
 - `SECURITY.md`

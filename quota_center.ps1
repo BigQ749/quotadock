@@ -262,6 +262,7 @@ $script:ActualProviderState = @{}
 $script:HostStateAvailable = $false
 $script:HostStateUpdatedAt = $null
 $script:StateTimer = $null
+$script:ProviderSyncTimer = $null
 $script:PendingProviderActions = @{}
 $script:PendingProviderSince = @{}
 $script:UpdateCheckStarted = $false
@@ -356,6 +357,7 @@ function Start-Provider {
         '-Provider'
         $Provider
         '-SkipHost'
+        '-Once'
     )
     Start-Process `
         -FilePath $powershell `
@@ -363,6 +365,37 @@ function Start-Provider {
         -WorkingDirectory $root `
         -ArgumentList $arguments | Out-Null
     Write-HostRequest 'add' $Provider
+}
+
+function Start-ProviderSyncOnce {
+    param([string]$Provider)
+    if ([string]::IsNullOrWhiteSpace($Provider) -or -not ($script:SelectedProviders -contains $Provider)) {
+        return
+    }
+    $launcher = Join-Path $root 'launch_quota_small_widget.ps1'
+    if (-not (Test-Path -LiteralPath $launcher -PathType Leaf)) {
+        return
+    }
+    try {
+        Start-Process `
+            -FilePath $powershell `
+            -WindowStyle Hidden `
+            -WorkingDirectory $root `
+            -ArgumentList @(
+                '-NoProfile'
+                '-ExecutionPolicy'
+                'Bypass'
+                '-File'
+                $launcher
+                '-Provider'
+                $Provider
+                '-SkipHost'
+                '-Once'
+            ) | Out-Null
+    }
+    catch {
+        Write-CenterError ('sync-once-' + $Provider) $_
+    }
 }
 
 function Set-Status {
@@ -414,6 +447,7 @@ function Stop-QuotaDockSyncProcesses {
     $patterns = @(
         '*codex_quota_fetch_loop.ps1*',
         '*grok-weekly-quota-widget*monitor.py*--sync-only*',
+        '*grok-weekly-quota-widget*monitor.py*--sync-once*',
         '*opencode_go_background_sync.ps1*',
         '*opencode_go_browser_bridge.ps1*'
     )
@@ -886,6 +920,9 @@ function Exit-Center {
     if ($null -ne $script:OpenTimer) {
         $script:OpenTimer.Stop()
     }
+    if ($null -ne $script:ProviderSyncTimer) {
+        $script:ProviderSyncTimer.Stop()
+    }
     if ($null -ne $notify) {
         $notify.Visible = $false
     }
@@ -1064,7 +1101,9 @@ function Open-AddProviderDialog {
     $dialog.Text = '添加其他平台'
     $dialog.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterParent
     $dialog.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
-    $dialog.ClientSize = New-Object System.Drawing.Size(660, 510)
+    $dialog.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
+    $dialog.ClientSize = New-Object System.Drawing.Size(820, 650)
+    $dialog.MinimumSize = New-Object System.Drawing.Size(820, 650)
     $dialog.MinimizeBox = $false
     $dialog.MaximizeBox = $false
     $dialog.ShowInTaskbar = $false
@@ -1080,42 +1119,47 @@ function Open-AddProviderDialog {
     }.GetNewClosure())
     $dialog.BackColor = $background
     $dialog.ForeColor = $foreground
-    $dialog.Font = New-UiFont 'Microsoft YaHei UI' 14
+    $dialog.Font = New-UiFont 'Microsoft YaHei UI' 16
 
-    $heading = Add-TextLabel '添加自定义额度平台' (New-Object System.Drawing.Point(32, 24)) (New-Object System.Drawing.Size(560, 36)) (New-UiFont 'Microsoft YaHei UI' 24 ([System.Drawing.FontStyle]::Bold)) $foreground $dialog
-    $hint = Add-TextLabel '先注册显示卡片，再由同步脚本或你自己的程序更新 JSON。' (New-Object System.Drawing.Point(34, 66)) (New-Object System.Drawing.Size(590, 28)) (New-UiFont 'Microsoft YaHei UI' 15) $muted $dialog
+    $heading = Add-TextLabel '添加自定义额度平台' (New-Object System.Drawing.Point(42, 30)) (New-Object System.Drawing.Size(700, 42)) (New-UiFont 'Microsoft YaHei UI' 28 ([System.Drawing.FontStyle]::Bold)) $foreground $dialog
+    $hint = Add-TextLabel '先注册显示卡片，再由同步脚本或你自己的程序更新 JSON。' (New-Object System.Drawing.Point(44, 80)) (New-Object System.Drawing.Size(720, 32)) (New-UiFont 'Microsoft YaHei UI' 16) $muted $dialog
 
-    $nameLabel = Add-TextLabel '平台名称' (New-Object System.Drawing.Point(34, 112)) (New-Object System.Drawing.Size(150, 28)) (New-UiFont 'Microsoft YaHei UI' 15) $subtle $dialog
+    $nameLabel = Add-TextLabel '平台名称' (New-Object System.Drawing.Point(44, 142)) (New-Object System.Drawing.Size(180, 32)) (New-UiFont 'Microsoft YaHei UI' 17) $subtle $dialog
     $nameBox = New-Object System.Windows.Forms.TextBox
-    $nameBox.Location = New-Object System.Drawing.Point(188, 108)
-    $nameBox.Size = New-Object System.Drawing.Size(430, 32)
+    $nameBox.Location = New-Object System.Drawing.Point(236, 136)
+    $nameBox.Size = New-Object System.Drawing.Size(520, 40)
+    $nameBox.Font = New-UiFont 'Microsoft YaHei UI' 16
     $nameBox.Text = 'Claude Code'
     $dialog.Controls.Add($nameBox)
 
-    $idLabel = Add-TextLabel '英文标识' (New-Object System.Drawing.Point(34, 156)) (New-Object System.Drawing.Size(150, 28)) (New-UiFont 'Microsoft YaHei UI' 15) $subtle $dialog
+    $idLabel = Add-TextLabel '英文标识' (New-Object System.Drawing.Point(44, 195)) (New-Object System.Drawing.Size(180, 32)) (New-UiFont 'Microsoft YaHei UI' 17) $subtle $dialog
     $idBox = New-Object System.Windows.Forms.TextBox
-    $idBox.Location = New-Object System.Drawing.Point(188, 152)
-    $idBox.Size = New-Object System.Drawing.Size(430, 32)
+    $idBox.Location = New-Object System.Drawing.Point(236, 189)
+    $idBox.Size = New-Object System.Drawing.Size(520, 40)
+    $idBox.Font = New-UiFont 'Microsoft YaHei UI' 16
     $idBox.Text = 'claude'
     $dialog.Controls.Add($idBox)
 
-    $descriptionLabel = Add-TextLabel '卡片说明' (New-Object System.Drawing.Point(34, 200)) (New-Object System.Drawing.Size(150, 28)) (New-UiFont 'Microsoft YaHei UI' 15) $subtle $dialog
+    $descriptionLabel = Add-TextLabel '卡片说明' (New-Object System.Drawing.Point(44, 248)) (New-Object System.Drawing.Size(180, 32)) (New-UiFont 'Microsoft YaHei UI' 17) $subtle $dialog
     $descriptionBox = New-Object System.Windows.Forms.TextBox
-    $descriptionBox.Location = New-Object System.Drawing.Point(188, 196)
-    $descriptionBox.Size = New-Object System.Drawing.Size(430, 32)
+    $descriptionBox.Location = New-Object System.Drawing.Point(236, 242)
+    $descriptionBox.Size = New-Object System.Drawing.Size(520, 40)
+    $descriptionBox.Font = New-UiFont 'Microsoft YaHei UI' 16
     $descriptionBox.Text = '周额度 · 自定义同步'
     $dialog.Controls.Add($descriptionBox)
 
-    $dataLabel = Add-TextLabel '额度 JSON' (New-Object System.Drawing.Point(34, 244)) (New-Object System.Drawing.Size(150, 28)) (New-UiFont 'Microsoft YaHei UI' 15) $subtle $dialog
+    $dataLabel = Add-TextLabel '额度 JSON' (New-Object System.Drawing.Point(44, 301)) (New-Object System.Drawing.Size(180, 32)) (New-UiFont 'Microsoft YaHei UI' 17) $subtle $dialog
     $dataBox = New-Object System.Windows.Forms.TextBox
-    $dataBox.Location = New-Object System.Drawing.Point(188, 240)
-    $dataBox.Size = New-Object System.Drawing.Size(330, 32)
+    $dataBox.Location = New-Object System.Drawing.Point(236, 295)
+    $dataBox.Size = New-Object System.Drawing.Size(410, 40)
+    $dataBox.Font = New-UiFont 'Microsoft YaHei UI' 16
     $dataBox.Text = (Join-Path $customDataRoot 'claude.json')
     $dialog.Controls.Add($dataBox)
     $browseData = New-Object System.Windows.Forms.Button
     $browseData.Text = '选择…'
-    $browseData.Location = New-Object System.Drawing.Point(532, 239)
-    $browseData.Size = New-Object System.Drawing.Size(86, 34)
+    $browseData.Location = New-Object System.Drawing.Point(664, 294)
+    $browseData.Size = New-Object System.Drawing.Size(92, 42)
+    $browseData.Font = New-UiFont 'Microsoft YaHei UI' 15
     $browseData.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $browseData.ForeColor = $foreground
     $browseData.BackColor = $surfaceRaised
@@ -1130,15 +1174,17 @@ function Open-AddProviderDialog {
     }.GetNewClosure())
     $dialog.Controls.Add($browseData)
 
-    $brandLabel = Add-TextLabel '品牌图标（可选）' (New-Object System.Drawing.Point(34, 288)) (New-Object System.Drawing.Size(150, 28)) (New-UiFont 'Microsoft YaHei UI' 15) $subtle $dialog
+    $brandLabel = Add-TextLabel '品牌图标（可选）' (New-Object System.Drawing.Point(44, 354)) (New-Object System.Drawing.Size(180, 32)) (New-UiFont 'Microsoft YaHei UI' 17) $subtle $dialog
     $brandBox = New-Object System.Windows.Forms.TextBox
-    $brandBox.Location = New-Object System.Drawing.Point(188, 284)
-    $brandBox.Size = New-Object System.Drawing.Size(330, 32)
+    $brandBox.Location = New-Object System.Drawing.Point(236, 348)
+    $brandBox.Size = New-Object System.Drawing.Size(410, 40)
+    $brandBox.Font = New-UiFont 'Microsoft YaHei UI' 16
     $dialog.Controls.Add($brandBox)
     $browseBrand = New-Object System.Windows.Forms.Button
     $browseBrand.Text = '选择…'
-    $browseBrand.Location = New-Object System.Drawing.Point(532, 283)
-    $browseBrand.Size = New-Object System.Drawing.Size(86, 34)
+    $browseBrand.Location = New-Object System.Drawing.Point(664, 347)
+    $browseBrand.Size = New-Object System.Drawing.Size(92, 42)
+    $browseBrand.Font = New-UiFont 'Microsoft YaHei UI' 15
     $browseBrand.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $browseBrand.ForeColor = $foreground
     $browseBrand.BackColor = $surfaceRaised
@@ -1152,12 +1198,13 @@ function Open-AddProviderDialog {
     }.GetNewClosure())
     $dialog.Controls.Add($browseBrand)
 
-    $schema = Add-TextLabel "JSON 格式：{ windows: [{ label: '周额度', remainingPercent: 75, resetText: '示例：周六 12:00' }], updatedAt: '2026-01-01T00:00:00Z' }`r`n保存后会自动生成模板；QuotaDock 只读取本地文件，不会代替第三方平台完成登录或抓取。" (New-Object System.Drawing.Point(34, 334)) (New-Object System.Drawing.Size(590, 70)) (New-UiFont 'Microsoft YaHei UI' 13) $muted $dialog
+    $schema = Add-TextLabel "JSON 格式：{ windows: [{ label: '周额度', remainingPercent: 75, resetText: '示例：周六 12:00' }], updatedAt: '2026-01-01T00:00:00Z' }`r`n保存后会自动生成模板；QuotaDock 只读取本地文件，不会代替第三方平台完成登录或抓取。" (New-Object System.Drawing.Point(44, 414)) (New-Object System.Drawing.Size(720, 92)) (New-UiFont 'Microsoft YaHei UI' 14) $muted $dialog
 
     $cancel = New-Object System.Windows.Forms.Button
     $cancel.Text = '取消'
-    $cancel.Location = New-Object System.Drawing.Point(388, 444)
-    $cancel.Size = New-Object System.Drawing.Size(106, 40)
+    $cancel.Location = New-Object System.Drawing.Point(564, 566)
+    $cancel.Size = New-Object System.Drawing.Size(126, 48)
+    $cancel.Font = New-UiFont 'Microsoft YaHei UI' 16
     $cancel.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $cancel.ForeColor = $muted
     $cancel.BackColor = $surfaceRaised
@@ -1166,8 +1213,9 @@ function Open-AddProviderDialog {
 
     $create = New-Object System.Windows.Forms.Button
     $create.Text = '创建并显示'
-    $create.Location = New-Object System.Drawing.Point(506, 444)
-    $create.Size = New-Object System.Drawing.Size(112, 40)
+    $create.Location = New-Object System.Drawing.Point(704, 566)
+    $create.Size = New-Object System.Drawing.Size(126, 48)
+    $create.Font = New-UiFont 'Microsoft YaHei UI' 16
     $create.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $create.ForeColor = $foreground
     $create.BackColor = $accentSoft
@@ -1423,15 +1471,15 @@ function New-ProviderContextMenu {
     $menu.BackColor = $menuSurface
     $menu.ForeColor = $menuText
     $menu.AutoSize = $true
-    $menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
-    $menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
-    $menu.Font = New-UiFont 'Microsoft YaHei UI' 16
+    $menu.Padding = New-Object System.Windows.Forms.Padding(20, 18, 20, 18)
+    $menu.MinimumSize = New-Object System.Drawing.Size(420, 0)
+    $menu.Font = New-UiFont 'Microsoft YaHei UI' 18
 
     $titleItem = New-Object System.Windows.Forms.ToolStripMenuItem($providers[$Provider].Title)
     $titleItem.Enabled = $false
     $titleItem.BackColor = $menuSurface
     $titleItem.ForeColor = $menuMuted
-    $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 16 ([System.Drawing.FontStyle]::Bold)
+    $titleItem.Font = New-UiFont 'Microsoft YaHei UI' 18 ([System.Drawing.FontStyle]::Bold)
     [void]$menu.Items.Add($titleItem)
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
@@ -1453,7 +1501,7 @@ function New-ProviderContextMenu {
             if ($item -ne $titleItem) {
                 $item.ForeColor = $menuText
             }
-            $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
+            $item.Padding = New-Object System.Windows.Forms.Padding(18, 14, 18, 14)
         }
     }
     $menu.Add_Opened({
@@ -1854,13 +1902,13 @@ $menu.ForeColor = $foreground
 $menu.ShowImageMargin = $false
 $menu.ShowCheckMargin = $true
 $menu.AutoSize = $true
-$menu.Padding = New-Object System.Windows.Forms.Padding(16, 14, 16, 14)
-$menu.MinimumSize = New-Object System.Drawing.Size(340, 0)
-$menu.Font = New-UiFont 'Microsoft YaHei UI' 16
+$menu.Padding = New-Object System.Windows.Forms.Padding(20, 18, 20, 18)
+$menu.MinimumSize = New-Object System.Drawing.Size(420, 0)
+$menu.Font = New-UiFont 'Microsoft YaHei UI' 18
 
 $menuTitle = New-Object System.Windows.Forms.ToolStripMenuItem('QuotaDock  ·  浮窗控制')
 $menuTitle.Enabled = $false
-$menuTitle.Font = New-UiFont 'Microsoft YaHei UI' 14 ([System.Drawing.FontStyle]::Bold)
+$menuTitle.Font = New-UiFont 'Microsoft YaHei UI' 16 ([System.Drawing.FontStyle]::Bold)
 [void]$menu.Items.Add($menuTitle)
 [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
@@ -1912,7 +1960,7 @@ $exitItem = New-Object System.Windows.Forms.ToolStripMenuItem('退出 QuotaDock'
 foreach ($item in @($menu.Items)) {
     if ($item -is [System.Windows.Forms.ToolStripMenuItem]) {
         $item.Font = $menu.Font
-        $item.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 10)
+        $item.Padding = New-Object System.Windows.Forms.Padding(18, 14, 18, 14)
     }
 }
 
@@ -1970,6 +2018,20 @@ $stateTimer.Add_Tick({
 })
 $stateTimer.Start()
 
+# Provider refreshes are short-lived one-shot workers. Keeping the center and
+# the fusion host as the only resident PowerShell processes avoids three idle
+# provider loops consuming memory for the whole session, while the provider
+# mutexes still serialize an occasional refresh safely.
+$providerSyncTimer = New-Object System.Windows.Forms.Timer
+$script:ProviderSyncTimer = $providerSyncTimer
+$providerSyncTimer.Interval = 60000
+$providerSyncTimer.Add_Tick({
+    foreach ($provider in @($script:SelectedProviders)) {
+        Start-ProviderSyncOnce $provider
+    }
+})
+$providerSyncTimer.Start()
+
 if ($null -ne $script:ShowCenterEvent) {
     $showTimer = New-Object System.Windows.Forms.Timer
     $script:ShowTimer = $showTimer
@@ -2010,6 +2072,11 @@ finally {
         $script:StateTimer.Stop()
         $script:StateTimer.Dispose()
         $script:StateTimer = $null
+    }
+    if ($null -ne $script:ProviderSyncTimer) {
+        $script:ProviderSyncTimer.Stop()
+        $script:ProviderSyncTimer.Dispose()
+        $script:ProviderSyncTimer = $null
     }
     $notify.Visible = $false
     $notify.Dispose()

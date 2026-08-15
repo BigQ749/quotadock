@@ -4,8 +4,9 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/BigQ749/quotadock/release.yml?label=Windows%20build)](https://github.com/BigQ749/quotadock/actions)
 [![License](https://img.shields.io/github/license/BigQ749/quotadock)](LICENSE)
 [![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4)](docs/download.md)
+[![macOS](https://img.shields.io/badge/platform-macOS%2013%2B-111111)](docs/macos.md)
 
-一个安静、可组合的 Windows AI 额度浮窗：把 Codex、Grok、OpenCode Go 和自定义平台放在桌面边缘，按需单独打开，也可以拖到一起成为一个真正可整体移动的融合窗口。
+一个安静、可组合的 AI 额度浮窗：Windows 版把 Codex、Grok、OpenCode Go 和自定义平台放在桌面边缘；macOS 版使用原生菜单栏与浮动面板。各平台可以按需单独打开，也可以拖到一起成为一个真正可整体移动的融合窗口。
 
 QuotaDock is a local-first Windows quota dashboard and floating overlay for Codex, Grok, OpenCode Go, Claude Code, and custom providers. It reads local quota snapshots, keeps provider cards independent or fused, and leaves downloads, updates, and credential handling under the user's control.
 
@@ -24,16 +25,19 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 
 ## 下载与系统支持
 
-当前公开发行版是 Windows 桌面应用。普通用户请在 [GitHub Releases](https://github.com/BigQ749/quotadock/releases) 下载 `QuotaDock-Setup-X.Y.Z.exe`；`QuotaDock-vX.Y.Z.zip` 是便携/更新包，不是安装向导。请先看 [下载选择指南](docs/download.md)。
+当前公开发行版包含 Windows 安装器与 macOS 原生预览包。普通用户请在 [GitHub Releases](https://github.com/BigQ749/quotadock/releases) 按系统下载；Windows 的 `QuotaDock-vX.Y.Z.zip` 是便携/更新包，不是安装向导。请先看 [下载选择指南](docs/download.md)。
 
 | 设备 | 下载 | 状态 |
 |---|---|---|
 | Windows 10/11 x64 | `QuotaDock-Setup-X.Y.Z.exe` | ✅ 主要验证目标 |
 | Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；请使用 PowerShell 7+ |
 | Windows ARM64 | 暂无原生包 | ⚠️ 未作为发行版承诺；不要把 x64 安装包称为 ARM 原生版 |
-| macOS / Linux | 暂不提供 | 🧭 PowerShell 7+ + WinForms 版本尚未跨平台 |
+| macOS 13+ Intel / Apple Silicon | `QuotaDock-macOS-vX.Y.Z.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；读取本地 `providers.json` |
+| Linux | 暂不提供 | 🧭 当前没有 Linux UI 宿主与发行版 |
 
 安装器支持：选择安装目录、阅读 MIT 许可证、当前用户范围安装、不要求管理员权限、创建开始菜单/桌面快捷方式，以及可选的“登录 Windows 时自动启动”。安装不会删除 `%LOCALAPPDATA%\QuotaDock` 中的额度配置和凭据。
+
+macOS ZIP 解压后将 `QuotaDock.app` 拖到“应用程序”文件夹即可。首次打开如果被 Gatekeeper 拦截，请在“系统设置 → 隐私与安全性”中确认允许打开；未签名/未公证是当前预览包的已知边界。macOS 数据契约和同步边界见 [macOS 版本说明](docs/macos.md)。
 
 ## 功能
 
@@ -44,6 +48,7 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 - 高 DPI 感知绘制，统一官方品牌标识，清晰的百分比与同步时间。
 - OpenCode Go 支持 Chrome 页面桥接；也可以一次配置后用后台同步脚本按约 60 秒更新。
 - 通过管理中心添加其他平台：平台名称、英文标识、本地 JSON 路径和可选品牌图标都可自定义。
+- macOS 预览版使用原生 SwiftUI 浮动面板，读取 `~/Library/Application Support/QuotaDock/providers.json`，不复用 Windows 的 PowerShell/WinForms 脚本。
 
 ## 安装
 
@@ -139,6 +144,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\packaging\build.ps1 -Clean
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
 ```
 
+macOS：
+
+```bash
+cd macos/QuotaDockMac
+swift build -c release
+.build/release/QuotaDock
+```
+
 ## 架构与扩展
 
 - [`quota_center.ps1`](quota_center.ps1)：平台选择、添加/删除自定义平台、托盘菜单和更新入口。
@@ -146,6 +159,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
 - [`launch_quota_small_widget.ps1`](launch_quota_small_widget.ps1)：启动平台同步器和宿主请求。
 - [`opencode_go_background_sync.ps1`](opencode_go_background_sync.ps1)：可选的 OpenCode Go 后台同步。
 - [`opencode-go-quota-bridge/`](opencode-go-quota-bridge/)：Chrome 页面桥接扩展。
+- [`macos/QuotaDockMac/`](macos/QuotaDockMac/)：macOS 原生 SwiftUI 菜单栏/浮动面板预览版。
 
 先读 [`llms.txt`](llms.txt)、[`docs/architecture.md`](docs/architecture.md) 和 [`docs/provider-adapter.md`](docs/provider-adapter.md)，再修改项目。新增平台应优先新增适配器或本地 JSON 源，不要复制一套新的原生浮窗。
 
@@ -155,7 +169,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
 
 - 管理中心显示与实际窗口不一致：检查宿主进程和 `%LOCALAPPDATA%\QuotaDock\host_state.json`。
 - 右键菜单报错：重启当前 QuotaDock 宿主，确认使用同一版本脚本；不要同时运行旧版独立浮窗。
-- OpenCode Go 不更新：检查扩展是否加载、后台凭据是否过期、接口是否返回 401/403，以及 `updatedAt` 是否变化。
+- OpenCode Go 不更新：检查扩展是否加载、后台凭据是否过期、接口是否返回 401/403，以及 `updatedAt` 是否变化。Windows 版会按约 60 秒启动一次短同步任务；macOS 预览版目前只读取本地快照，不会自动登录第三方平台。
 - 字体或百分比模糊：确认 Windows 缩放设置和原生 DPI 感知是否被组织策略禁用。
 
 ## 贡献与安全

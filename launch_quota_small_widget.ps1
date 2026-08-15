@@ -1,6 +1,7 @@
 ﻿param(
     [string]$Provider,
-    [switch]$SkipHost
+    [switch]$SkipHost,
+    [switch]$Once
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -114,6 +115,22 @@ function Keep-One-QuotaDockSyncProcess {
     return $null
 }
 
+function Test-ScriptSupportsOnce {
+    param(
+        [string]$Path,
+        [string]$Marker
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $false
+    }
+    try {
+        return (Get-Content -LiteralPath $Path -Raw -ErrorAction Stop) -match $Marker
+    }
+    catch {
+        return $false
+    }
+}
+
 # 停掉旧版独立浮窗和旧大融合面板，避免新旧两套窗口同时存在
 $script:ProcessSnapshot |
     Where-Object {
@@ -129,9 +146,17 @@ if ($Provider -eq 'codex') {
     if ([string]::IsNullOrWhiteSpace($loopPath)) {
         $loopPath = Get-QuotaDockSiblingIntegrationPath 'codex-quota-desktop\codex_quota_fetch_loop.ps1'
     }
-    $loop = Keep-One-QuotaDockSyncProcess '*codex_quota_fetch_loop.ps1*' $loopPath 'pwsh.exe'
-    if ($null -eq $loop -and (Test-Path -LiteralPath $loopPath)) {
-        Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
+    $supportsOnce = $Once -and (Test-ScriptSupportsOnce $loopPath '\[switch\]\$Once')
+    if ($supportsOnce) {
+        Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath, '-Once')
+    }
+    else {
+        # Older sibling integrations are kept compatible: fall back to their
+        # original resident mode instead of passing an unsupported parameter.
+        $loop = Keep-One-QuotaDockSyncProcess '*codex_quota_fetch_loop.ps1*' $loopPath 'pwsh.exe'
+        if ($null -eq $loop -and (Test-Path -LiteralPath $loopPath)) {
+            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
+        }
     }
 }
 elseif ($Provider -eq 'grok') {
@@ -139,15 +164,23 @@ elseif ($Provider -eq 'grok') {
     if ([string]::IsNullOrWhiteSpace($monitorPath)) {
         $monitorPath = Get-QuotaDockSiblingIntegrationPath 'grok-weekly-quota-widget\monitor.py'
     }
-    $sync = Keep-One-QuotaDockSyncProcess '*grok-weekly-quota-widget*monitor.py*--sync-only*' $monitorPath 'pythonw.exe'
+    $supportsOnce = $Once -and (Test-ScriptSupportsOnce $monitorPath '--sync-once')
     $pythonCandidates = @(
         (Resolve-ConfiguredPath 'QUOTADOCK_PYTHONW' 'pythonwPath'),
         (Join-Path $env:LocalAppData 'Programs\Python\Python314\pythonw.exe'),
         (Join-Path $env:LocalAppData 'Programs\Python\Python313\pythonw.exe')
     )
     $pythonw = $pythonCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    if ($null -eq $sync -and $null -ne $pythonw -and (Test-Path -LiteralPath $monitorPath)) {
-        Start-Process -FilePath $pythonw -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $monitorPath) -ArgumentList @($monitorPath, '--sync-only')
+    if ($null -ne $pythonw -and (Test-Path -LiteralPath $monitorPath)) {
+        if ($supportsOnce) {
+            Start-Process -FilePath $pythonw -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $monitorPath) -ArgumentList @($monitorPath, '--sync-once')
+        }
+        else {
+            $sync = Keep-One-QuotaDockSyncProcess '*grok-weekly-quota-widget*monitor.py*--sync-only*' $monitorPath 'pythonw.exe'
+            if ($null -eq $sync) {
+                Start-Process -FilePath $pythonw -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $monitorPath) -ArgumentList @($monitorPath, '--sync-only')
+            }
+        }
     }
 }
 elseif ($Provider -eq 'opencode') {
@@ -164,9 +197,15 @@ elseif ($Provider -eq 'opencode') {
                 $_.CommandLine -like '*opencode_go_browser_bridge.ps1*'
             } |
             ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-        $sync = Keep-One-QuotaDockSyncProcess '*opencode_go_background_sync.ps1*' $backgroundPath 'pwsh.exe'
-        if ($null -eq $sync -and (Test-Path -LiteralPath $backgroundPath)) {
-            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath, '-IntervalSeconds', '60')
+        $supportsOnce = $Once -and (Test-ScriptSupportsOnce $backgroundPath '\[switch\]\$Once')
+        if ($supportsOnce) {
+            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath, '-Once')
+        }
+        else {
+            $sync = Keep-One-QuotaDockSyncProcess '*opencode_go_background_sync.ps1*' $backgroundPath 'pwsh.exe'
+            if ($null -eq $sync -and (Test-Path -LiteralPath $backgroundPath)) {
+                Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath, '-IntervalSeconds', '60')
+            }
         }
     }
     else {
