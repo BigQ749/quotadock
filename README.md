@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/readme/hero.gif" width="100%" alt="QuotaDock：把 Codex、Grok、OpenCode 额度贴在桌面边缘，卡片可分可合。">
+</p>
+
 # QuotaDock
 
 [![Release](https://img.shields.io/github/v/release/BigQ749/quotadock?display_name=tag&sort=semver)](https://github.com/BigQ749/quotadock/releases)
