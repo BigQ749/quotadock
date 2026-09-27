@@ -18,6 +18,10 @@ public static class QuotaFusionDpiNative {
     private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
     [DllImport("shcore.dll")]
     private static extern int SetProcessDpiAwareness(int value);
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
     public static void Enable() {
         try {
             if (SetProcessDpiAwarenessContext(new IntPtr(-4))) {
@@ -327,6 +331,7 @@ $script:DemoEjectTimer = $null
 $script:PulseForms = @{}
 $script:PulseTimer = $null
     $script:DockTimer = $null
+$script:LastTopmostEnforcementAt = [datetime]::MinValue
     $script:ClosingForms = @{}
 $script:MergePending = @{}
 $script:MergeConsumed = @{}
@@ -1770,6 +1775,53 @@ function Get-RevealLocation {
     return New-Object System.Drawing.Point([int]$x, [int]$y)
 }
 
+function Set-FloatWindowTopmost {
+    param($Form)
+    if ($null -eq $Form -or $Form.IsDisposed) {
+        return $false
+    }
+    if (-not $Form.TopMost) {
+        $Form.TopMost = $true
+    }
+    if (-not $Form.IsHandleCreated -or -not $Form.Visible) {
+        return $true
+    }
+
+    # Reassert the HWND at the top of the topmost band without taking focus.
+    $flags = [uint32](0x0001 -bor 0x0002 -bor 0x0010 -bor 0x0200)
+    $succeeded = [QuotaFusionDpiNative]::SetWindowPos(
+        $Form.Handle,
+        [IntPtr](-1),
+        0,
+        0,
+        0,
+        0,
+        $flags
+    )
+    if (-not $succeeded) {
+        Write-Log $errorLog ('SetWindowPos topmost failed: ' + [Runtime.InteropServices.Marshal]::GetLastWin32Error())
+    }
+    return [bool]$succeeded
+}
+
+function Process-DockedWindowTopmost {
+    $now = [datetime]::UtcNow
+    if (($now - $script:LastTopmostEnforcementAt).TotalMilliseconds -lt 250) {
+        return
+    }
+    $script:LastTopmostEnforcementAt = $now
+
+    foreach ($form in @($script:DockState.Keys)) {
+        if ($null -eq $form -or $form.IsDisposed -or -not $form.Visible) {
+            continue
+        }
+        $state = $script:DockState[$form]
+        if ($null -ne $state -and $state.Docked) {
+            [void](Set-FloatWindowTopmost $form)
+        }
+    }
+}
+
 function Schedule-AutoDock {
     param($Form, [int]$DelayMs = $script:DockHideDelayMs)
     $state = $script:DockState[$Form]
@@ -1797,6 +1849,7 @@ function Dock-AtEdge {
     $state.HoldOpen = $false
     $Form.Location = Get-DockLocation $Form $Edge
     Update-WindowRegion $Form
+    [void](Set-FloatWindowTopmost $Form)
     $Form.Invalidate()
     return $true
 }
@@ -1869,6 +1922,7 @@ function Restore-FromDock {
     $state.AutoDockAt = [datetime]::UtcNow.AddMilliseconds($script:DockRevealDelayMs)
     $Form.Location = Get-RevealLocation $Form $edge
     Update-WindowRegion $Form
+    [void](Set-FloatWindowTopmost $Form)
     $Form.Invalidate()
 }
 
@@ -2180,6 +2234,18 @@ function New-FloatWindow {
     $script:FusionFx[$form] = 0.0
     $contextMenu = New-FloatContextMenu $form
     $form.ContextMenuStrip = $contextMenu
+
+    $form.Add_Shown({
+        param($sender, $e)
+        [void](Set-FloatWindowTopmost $sender)
+    })
+    $form.Add_Deactivate({
+        param($sender, $e)
+        $state = $script:DockState[$sender]
+        if ($null -ne $state -and $state.Docked) {
+            [void](Set-FloatWindowTopmost $sender)
+        }
+    })
 
     $flags = [System.Reflection.BindingFlags]::Instance -bor [System.Reflection.BindingFlags]::NonPublic
     $dbProp = [System.Windows.Forms.Form].GetProperty('DoubleBuffered', $flags)
@@ -2887,6 +2953,7 @@ try {
     $dockTimer.Add_Tick({
         try {
             Process-AutoDock
+            Process-DockedWindowTopmost
         }
         catch {
             Write-Log $errorLog ('dockTimer: ' + ($_ | Out-String))
