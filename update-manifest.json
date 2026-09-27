@@ -1,9 +1,9 @@
 {
-  "version": "0.2.1",
+  "version": "0.2.2",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.1/QuotaDock-v0.2.1.zip",
-  "sha256": "b13eb277bfe5ec16c4c435ac42322a4515a095506fd1a31bb851498612bd5785",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.1",
-  "notes": "# QuotaDock v0.2.1\r\n\r\n## 修复\r\n\r\n- 修复 macOS SwiftUI 预览版在 macOS runner 上的浮动面板尺寸声明，确保 `QuotaDock-macOS-v0.2.1.zip` 能正常构建。\r\n- 保留 v0.2.0 的 Windows 菜单放大、右键藏边保护和短同步任务改动。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.1.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.1.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.1.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+；Intel x86_64 尚未发布）。\r\n\r\nmacOS 预览版仍然只读取 `~/Library/Application Support/QuotaDock/providers.json`，不复用 Windows 的 PowerShell、DPAPI、Chrome 桥接或账号同步路径；首次发布包尚未做 Apple Developer ID 签名和公证。"
+  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.2/QuotaDock-v0.2.2.zip",
+  "sha256": "eaac55f3f5c49091b292d5c78de5ededdc64af8787577e0a1f04583b1b443fc4",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.2",
+  "notes": "# QuotaDock v0.2.2\r\n\r\n## 新增与修复\r\n\r\n- Codex 浮窗同时显示 5 小时额度与周额度，并分别显示服务端返回的重置倒计时。\r\n- 更新包内置 Codex 用量同步器；已登录 Codex 的 Windows 电脑无需另行克隆同步脚本仓库即可自动读取本机额度。\r\n- 同步失败时保留最近一次额度数据并显示错误状态；支持使用 `QUOTADOCK_PROXY_URL` 指定本机代理。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.2.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.2.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.2.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。macOS 版目前不提供 Codex 账号额度同步。\r\n\r\nCodex 双窗口需要目标电脑上的 Codex 已登录。窗口重置时间由 Codex 用量接口提供，不按固定周几推算；不配置代理时使用系统网络设置。"
 }
