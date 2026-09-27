@@ -1,9 +1,9 @@
 {
-  "version": "0.2.2",
+  "version": "0.2.3",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.2/QuotaDock-v0.2.2.zip",
-  "sha256": "eaac55f3f5c49091b292d5c78de5ededdc64af8787577e0a1f04583b1b443fc4",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.2",
-  "notes": "# QuotaDock v0.2.2\r\n\r\n## 新增与修复\r\n\r\n- Codex 浮窗同时显示 5 小时额度与周额度，并分别显示服务端返回的重置倒计时。\r\n- 更新包内置 Codex 用量同步器；已登录 Codex 的 Windows 电脑无需另行克隆同步脚本仓库即可自动读取本机额度。\r\n- 同步失败时保留最近一次额度数据并显示错误状态；支持使用 `QUOTADOCK_PROXY_URL` 指定本机代理。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.2.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.2.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.2.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。macOS 版目前不提供 Codex 账号额度同步。\r\n\r\nCodex 双窗口需要目标电脑上的 Codex 已登录。窗口重置时间由 Codex 用量接口提供，不按固定周几推算；不配置代理时使用系统网络设置。"
+  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.3/QuotaDock-v0.2.3.zip",
+  "sha256": "559a7c6043f70e928c7fdf8c298e0f5dd105f7a7b77ed562da667ad45c9953ac",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.3",
+  "notes": "# QuotaDock v0.2.3\r\n\r\n## 修复\r\n\r\n- 修复浮窗自动藏边后，状态栏可能被其他置顶应用覆盖的问题。\r\n- 状态栏会在失去焦点时及藏边期间重新提升到最上层，且不会抢占前台应用的输入焦点。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.3.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.3.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.3.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。\r\n\r\nWindows 安全桌面（如 UAC 提示）及独占全屏程序受系统窗口管理限制，普通桌面浮窗无法覆盖。"
 }
