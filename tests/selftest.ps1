@@ -38,6 +38,7 @@ function Invoke-QuotaDockSelfTest {
 
 Invoke-QuotaDockSelfTest 'quota_center.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'quota_fusion_host.ps1' @('-SelfTest')
+Invoke-QuotaDockSelfTest 'codex_quota_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'opencode_go_background_sync.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'check_for_updates.ps1' @('-SelfTest')
 Invoke-QuotaDockSelfTest 'install_quota_update.ps1' @('-SelfTest')
@@ -176,6 +177,11 @@ if ($launcherSource -notmatch '\[switch\]\$Once' -or
     $centerSource -notmatch 'Start-ProviderSyncOnce' -or
     $centerSource -notmatch 'ProviderSyncTimer') {
     throw 'REGRESSION_FAIL: provider sync must use on-demand one-shot launches instead of three resident loops'
+}
+if ($launcherSource -notmatch 'codex_quota_sync\.ps1' -or
+    $hostSource -notmatch 'Get-CodexQuotaRows' -or
+    $centerSource -notmatch '5 小时 / 周') {
+    throw 'REGRESSION_FAIL: Codex must bundle its sync worker and expose both quota windows'
 }
 if ($hostSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or
     $launcherSource -match 'D:\\AI\\|D:\\grok-weekly-quota-widget' -or

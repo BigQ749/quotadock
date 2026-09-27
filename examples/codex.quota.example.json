@@ -1,8 +1,15 @@
 {
   "provider": "codex",
+  "shortWindow": {
+    "title": "5 小时额度",
+    "remainingPercent": 82,
+    "resetAt": "2026-01-01T05:00:00Z",
+    "windowMinutes": 300
+  },
   "weekly": {
     "remainingPercent": 82,
-    "resetAt": "2026-01-03T12:00:00Z"
+    "resetAt": "2026-01-08T12:00:00Z",
+    "windowMinutes": 10080
   },
   "source": {
     "updatedAt": "2026-01-01T00:00:00Z"

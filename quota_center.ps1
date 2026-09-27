@@ -73,7 +73,7 @@ $appIconPath = Join-Path $root 'assets\app\QuotaDock.ico'
 $providers = [ordered]@{
     codex = [pscustomobject]@{
         Title = 'Codex'
-        Description = '周额度 · 独立浮窗'
+        Description = '5 小时 / 周 · 独立浮窗'
     }
     opencode = [pscustomobject]@{
         Title = 'OpenCode Go'
@@ -446,6 +446,7 @@ function Get-QuotaDockOwnedProcesses {
 function Stop-QuotaDockSyncProcesses {
     $patterns = @(
         '*codex_quota_fetch_loop.ps1*',
+        '*codex_quota_sync.ps1*',
         '*grok-weekly-quota-widget*monitor.py*--sync-only*',
         '*grok-weekly-quota-widget*monitor.py*--sync-once*',
         '*opencode_go_background_sync.ps1*',

@@ -69,7 +69,8 @@ try {
         releaseUrl   = 'https://github.com/' + $repository + '/releases/tag/' + $releaseTag
         notes        = $existingNotes
     }
-    [System.IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
+    $manifestJson = ($manifest | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"
+    [System.IO.File]::WriteAllText($manifestPath, $manifestJson, (New-Object System.Text.UTF8Encoding($false)))
     Write-Output ('QUOTADOCK_UPDATE_PACKAGE=' + $packagePath)
     Write-Output ('QUOTADOCK_UPDATE_SHA256=' + $sha256)
     Write-Output ('QUOTADOCK_UPDATE_FILE_COUNT=' + (@(Get-ChildItem -LiteralPath $stage -Recurse -File).Count))

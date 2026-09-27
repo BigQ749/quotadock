@@ -144,18 +144,27 @@ $script:ProcessSnapshot |
 if ($Provider -eq 'codex') {
     $loopPath = Resolve-ConfiguredPath 'QUOTADOCK_CODEX_SYNC' 'codexSyncScript'
     if ([string]::IsNullOrWhiteSpace($loopPath)) {
-        $loopPath = Get-QuotaDockSiblingIntegrationPath 'codex-quota-desktop\codex_quota_fetch_loop.ps1'
+        $legacyLoopPath = Get-QuotaDockSiblingIntegrationPath 'codex-quota-desktop\codex_quota_fetch_loop.ps1'
+        if (-not [string]::IsNullOrWhiteSpace($legacyLoopPath) -and (Test-Path -LiteralPath $legacyLoopPath -PathType Leaf)) {
+            $loopPath = $legacyLoopPath
+        }
+        else {
+            $loopPath = Join-Path $root 'codex_quota_sync.ps1'
+        }
     }
-    $supportsOnce = $Once -and (Test-ScriptSupportsOnce $loopPath '\[switch\]\$Once')
-    if ($supportsOnce) {
-        Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath, '-Once')
-    }
-    else {
-        # Older sibling integrations are kept compatible: fall back to their
-        # original resident mode instead of passing an unsupported parameter.
-        $loop = Keep-One-QuotaDockSyncProcess '*codex_quota_fetch_loop.ps1*' $loopPath 'pwsh.exe'
-        if ($null -eq $loop -and (Test-Path -LiteralPath $loopPath)) {
-            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
+    if (Test-Path -LiteralPath $loopPath -PathType Leaf) {
+        $processPattern = '*' + (Split-Path -Leaf $loopPath) + '*'
+        $supportsOnce = $Once -and (Test-ScriptSupportsOnce $loopPath '\[switch\]\$Once')
+        if ($supportsOnce) {
+            Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath, '-Once')
+        }
+        else {
+            # Older sibling integrations are kept compatible: fall back to their
+            # original resident mode instead of passing an unsupported parameter.
+            $loop = Keep-One-QuotaDockSyncProcess $processPattern $loopPath 'pwsh.exe'
+            if ($null -eq $loop) {
+                Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
+            }
         }
     }
 }

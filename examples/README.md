@@ -2,7 +2,9 @@
 
 这里的 JSON 只用于首次启动、开发和测试，数值是虚构的公开 fixture，不代表任何账号的真实额度。
 
-安装后建议把配置复制到 `%LOCALAPPDATA%\QuotaDock\quota_sources.json`，再把 `codexPath`、`grokPath` 和 `opencodePath` 改成你自己的同步器输出文件。也可以使用同名环境变量覆盖配置：
+Windows 版默认内置 Codex 同步器：它读取当前 Windows 用户 `%USERPROFILE%\.codex\auth.json` 中的 Codex 登录状态，并把 5 小时与周额度写入 `%LOCALAPPDATA%\QuotaDock\data\codex.json`。其他平台或自定义同步器可通过 `%LOCALAPPDATA%\QuotaDock\quota_sources.json` 配置数据路径；`codexSyncScript` 留空时使用内置 Codex 同步器。
+
+也可以使用同名环境变量覆盖配置：
 
 - `QUOTADOCK_CODEX_DATA`
 - `QUOTADOCK_GROK_DATA`

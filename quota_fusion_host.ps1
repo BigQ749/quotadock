@@ -170,8 +170,8 @@ $script:Profiles = @{
     codex = @{
         Title     = 'Codex'
         Accent    = @(120, 188, 255)
-        Width     = 460
-        Height    = 230
+        Width     = 560
+        Height    = 270
         DefaultX  = 24
         DefaultY  = 170
     }
@@ -600,6 +600,16 @@ function New-Row {
     }
 }
 
+function Get-CodexQuotaRows {
+    param($Data)
+    $shortWindow = Get-JsonValue $Data 'shortWindow'
+    $weekly = Get-JsonValue $Data 'weekly'
+    return @(
+        (New-Row '5 小时额度' (Format-Percent (Get-JsonValue $shortWindow 'remainingPercent')) (Format-OpenCodeResetText $shortWindow))
+        (New-Row '周额度' (Format-Percent (Get-JsonValue $weekly 'remainingPercent')) (Format-OpenCodeResetText $weekly))
+    )
+}
+
 function Get-UiModel {
     param([string]$Provider)
     $data = Read-QuotaData (Get-ActiveQuotaDataPath $Provider)
@@ -665,10 +675,7 @@ function Get-UiModel {
     }
 
     if ($Provider -eq 'codex') {
-        $weekly = Get-JsonValue $data 'weekly'
         $source = Get-JsonValue $data 'source'
-        $remaining = Get-JsonValue $weekly 'remainingPercent'
-        $resetAt = Get-JsonValue $weekly 'resetAt'
         $updatedAt = Get-JsonValue $source 'lastSuccessAt'
         if ([string]::IsNullOrWhiteSpace($updatedAt)) {
             $updatedAt = Get-JsonValue $source 'updatedAt'
@@ -688,7 +695,7 @@ function Get-UiModel {
             Title  = 'Codex'
             Badge  = if ($null -ne $age -and $age -gt 10) { '缓存' } else { '本地同步' }
             Status = $status
-            Rows   = @((New-Row '周额度' (Format-Percent $remaining) (Format-ResetText $resetAt)))
+            Rows   = @(Get-CodexQuotaRows $data)
             Error  = $false
         }
     }
@@ -809,6 +816,17 @@ if ($SelfTest) {
     })
     if ($countdownProbe -notmatch '后重置' -or $countdownProbe -eq '旧的静态文本') {
         throw 'OpenCode Go 动态倒计时自测失败'
+    }
+    $codexRowsProbe = Get-CodexQuotaRows ([pscustomobject]@{
+        shortWindow = [pscustomobject]@{ remainingPercent = 73; resetAt = [datetimeoffset]::UtcNow.AddHours(4).ToString('o') }
+        weekly = [pscustomobject]@{ remainingPercent = 61; resetAt = [datetimeoffset]::UtcNow.AddDays(5).ToString('o') }
+    })
+    if (@($codexRowsProbe).Count -ne 2 -or
+        $codexRowsProbe[0].Label -ne '5 小时额度' -or $codexRowsProbe[0].Remaining -ne '73%' -or
+        $codexRowsProbe[0].ResetText -notmatch '后重置' -or
+        $codexRowsProbe[1].Label -ne '周额度' -or $codexRowsProbe[1].Remaining -ne '61%' -or
+        $codexRowsProbe[1].ResetText -notmatch '后重置') {
+        throw 'Codex 5 小时 / 周双窗口展示自测失败'
     }
     $utcTimeProbe = [datetime]::SpecifyKind([datetime]'2026-08-13T13:14:15', [DateTimeKind]::Utc)
     $expectedLocalTime = $utcTimeProbe.ToLocalTime().ToString('HH:mm:ss')
@@ -1161,7 +1179,7 @@ function Draw-Card {
     Draw-Text $Graphics (Get-SafeText $model.Badge 16) ($X + 16) ($Y + 54) ($W - 32) 28 $fontMeta $muted
 
     $rows = @($model.Rows)
-    $isMultiRow = ($Card.Provider -eq 'opencode' -or $Card.Profile.Kind -eq 'custom')
+    $isMultiRow = ($Card.Provider -in @('codex', 'opencode') -or $Card.Profile.Kind -eq 'custom')
     if ($isMultiRow) {
         $rowY = $Y + 94
         foreach ($row in $rows) {

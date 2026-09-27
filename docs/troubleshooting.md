@@ -26,7 +26,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 
 ## 三个平台的同步时间跳动或显示不一致
 
-- 先确认同一平台只有一个 `codex_quota_fetch_loop.ps1`、`monitor.py --sync-only` 或 `opencode_go_background_sync.ps1` 进程；多个进程会争抢覆盖同一个 JSON。
+- 先确认同一平台只有一个 Codex 同步进程（内置 `codex_quota_sync.ps1` 或旧版 `codex_quota_fetch_loop.ps1`）、`monitor.py --sync-only` 或 `opencode_go_background_sync.ps1`；多个进程会争抢覆盖同一个 JSON。
 - `lastSuccessAt` 是最近一次成功获取时间；`lastAttemptAt` 只是最近一次尝试时间。401、断网或认证过期时，失败时间不会覆盖成功时间。
 - 如果卡片显示“缓存/数据已过期”，先修复对应同步器或凭证，不要只刷新 QuotaDock 界面。
 
