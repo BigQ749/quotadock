@@ -12,7 +12,7 @@
 
 一个安静、可组合的 AI 额度浮窗：Windows 版把 Codex、Grok、OpenCode Go、Grok Bot、Muse、Claude 和自定义平台放在桌面边缘；macOS 版使用原生菜单栏与浮动面板。各平台可以按需单独打开，也可以拖到一起成为一个真正可整体移动的融合窗口。
 
-QuotaDock is a local-first Windows quota dashboard and floating overlay for Codex, Grok, OpenCode Go, Claude Code, and custom providers. It reads local quota snapshots, keeps provider cards independent or fused, and leaves downloads, updates, and credential handling under the user's control.
+QuotaDock is a local-first Windows quota dashboard and floating overlay for Codex, Grok, OpenCode Go, Grok Bot, Muse, Claude, and custom providers. It reads local quota snapshots, keeps provider cards independent or fused, and leaves downloads, updates, and credential handling under the user's control.
 
 ![QuotaDock 管理中心](docs/images/quotadock-center.png)
 
@@ -27,27 +27,42 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 | 🛡️ | 本地优先 | UI 只读本地 JSON；仓库不包含 Cookie、凭据、真实额度快照或个人路径。 |
 | ⬆️ | 用户控制更新 | 启动时检查公开更新清单；标题栏的 `↑ 检查更新` 可查看当前版本并手动检查，发现新版本后直接下载、校验、替换并重启。 |
 
-## 下载与系统支持
+## 下载
 
-当前公开发行版包含 Windows 安装器与 macOS 原生预览包。普通用户请在 [GitHub Releases](https://github.com/BigQ749/quotadock/releases) 按系统下载；Windows 的 `QuotaDock-vX.Y.Z.zip` 是便携/更新包，不是安装向导。请先看 [下载选择指南](docs/download.md)。
+**首选（Windows 安装器，当前稳定版）：**
+
+[⬇️ 下载 QuotaDock-Setup-0.2.5.exe](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-Setup-0.2.5.exe)
+
+次要选项：
+
+- 便携 / 应用内更新包：[QuotaDock-v0.2.5.zip](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-v0.2.5.zip)
+- macOS 预览（Apple Silicon）：[QuotaDock-macOS-v0.2.5.zip](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-macOS-v0.2.5.zip)
+- 校验：同版本 [SHA256SUMS.txt](https://github.com/BigQ749/quotadock/releases/latest) · 选择说明见 [docs/download.md](docs/download.md)
+
+> **注意**
+> - Windows 未签名时 SmartScreen 可能提示“未知发布者”，属预期；请核对 SHA-256 后再安装。
+> - **不要**下载 Release 页的 `Source code (zip/tar.gz)` 当作安装包。
+> - 隐私：无遥测、不上传额度/Cookie，见 [docs/privacy.md](docs/privacy.md)。
+
+## 系统支持
 
 | 设备 | 下载 | 状态 |
 |---|---|---|
-| Windows 10/11 x64 | `QuotaDock-Setup-X.Y.Z.exe` | ✅ 主要验证目标 |
+| Windows 10/11 x64 | `QuotaDock-Setup-0.2.5.exe` | ✅ 主要验证目标 |
 | Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；请使用 PowerShell 7+ |
 | Windows ARM64 | 暂无原生包 | ⚠️ 未作为发行版承诺；不要把 x64 安装包称为 ARM 原生版 |
-| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.1 已在 arm64 runner 验证，读取本地 `providers.json` |
+| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-v0.2.5.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；读取本地 `providers.json` |
 | macOS Intel (x86_64) | 暂无已验证包 | ⚠️ Intel 构建尚未完成真实 CI 构建，不把 Apple Silicon 包称为通用包 |
 | Linux | 暂不提供 | 🧭 当前没有 Linux UI 宿主与发行版 |
 
-安装器支持：选择安装目录、阅读 MIT 许可证、当前用户范围安装、不要求管理员权限、创建开始菜单/桌面快捷方式，以及可选的“登录 Windows 时自动启动”。安装不会删除 `%LOCALAPPDATA%\QuotaDock` 中的额度配置和凭据。
+安装器支持：选择安装目录、阅读 MIT 许可证、当前用户范围安装、不要求管理员权限、创建开始菜单/桌面快捷方式，以及可选的“登录 Windows 时自动启动”。安装不会删除 `%LOCALAPPDATA%\QuotaDock` 中的额度配置和凭据。简体中文安装界面在 Inno Setup 自带 `ChineseSimplified.isl` 时启用。
 
 macOS ZIP 解压后将 `QuotaDock.app` 拖到“应用程序”文件夹即可。首次打开如果被 Gatekeeper 拦截，请在“系统设置 → 隐私与安全性”中确认允许打开；未签名/未公证是当前预览包的已知边界。macOS 数据契约和同步边界见 [macOS 版本说明](docs/macos.md)。
 
 ## 功能
 
-- 在一个 QuotaDock 管理中心中选择 Codex、Grok、OpenCode Go 或自定义平台。
-- Codex/Grok 可显示周额度；OpenCode Go 可显示 5 小时、周、月窗口；自定义平台最多 3 个窗口。
+- 在一个 QuotaDock 管理中心中选择 Codex、Grok、OpenCode Go、Grok Bot、Muse、Claude 或自定义平台。
+- Codex/Grok/Grok Bot/Muse/Claude 可显示周额度；OpenCode Go 可显示 5 小时、周、月窗口；自定义平台最多 3 个窗口。Claude 目前为手动 JSON / 预览。
 - 单独浮窗支持移动、最小化、关闭和左/右/上藏边。
 - 多个卡片拖近后合成一个宿主窗口；管理中心或浮窗右键都可以按平台关闭，关闭到最后一张时会留下独立卡片，不会误关整组。
 - 高 DPI 感知绘制，统一官方品牌标识，清晰的百分比与同步时间。
@@ -57,10 +72,11 @@ macOS ZIP 解压后将 `QuotaDock.app` 拖到“应用程序”文件夹即可�
 
 ## 安装
 
-1. 打开 [Releases](https://github.com/BigQ749/quotadock/releases)。
-2. 下载 `QuotaDock-Setup-*.exe` 和同版本的 `SHA256SUMS.txt`；不要下载源码压缩包作为安装程序。
-3. 校验 SHA-256 后运行安装器，按向导选择安装盘/目录、阅读许可证、选择快捷方式和开机启动。
-4. 通过桌面/开始菜单快捷方式启动 QuotaDock；安装目录里的 VBS 不需要手动操作。
+1. 使用上方深链下载 `QuotaDock-Setup-0.2.5.exe`，或打开 [Releases](https://github.com/BigQ749/quotadock/releases/latest)。
+2. 同时下载同版本 `SHA256SUMS.txt` 并校验；**不要**下载 Source code 压缩包当作安装程序。
+3. 若 SmartScreen 提示未知发布者：属未签名预期行为，核对哈希后再“仍要运行”。
+4. 运行安装器，按向导选择目录、阅读 MIT 许可证、快捷方式与开机启动。
+5. 通过桌面/开始菜单快捷方式启动；安装目录里的 VBS 不需要手动操作。
 
 第一次部署的用户强烈建议先看 [新手部署指南（实测经验版）](docs/deployment-guide.md)：里面包含环境检查、首次同步、关掉浏览器后的后台同步，以及“PowerShell 7+ 弹窗”“同步时间不更新”等真实踩坑的解决办法。
 
@@ -164,6 +180,7 @@ swift build -c release
 - [`launch_quota_small_widget.ps1`](launch_quota_small_widget.ps1)：启动平台同步器和宿主请求。
 - [`opencode_go_background_sync.ps1`](opencode_go_background_sync.ps1)：可选的 OpenCode Go 后台同步。
 - [`opencode-go-quota-bridge/`](opencode-go-quota-bridge/)：Chrome 页面桥接扩展。
+- [`adapters/`](adapters/)：可选本机同步适配器（Grok Bot / Muse；Claude 为手动 JSON 约定）。
 - [`macos/QuotaDockMac/`](macos/QuotaDockMac/)：macOS 原生 SwiftUI 菜单栏/浮动面板预览版。
 
 先读 [`llms.txt`](llms.txt)、[`docs/architecture.md`](docs/architecture.md) 和 [`docs/provider-adapter.md`](docs/provider-adapter.md)，再修改项目。新增平台应优先新增适配器或本地 JSON 源，不要复制一套新的原生浮窗。

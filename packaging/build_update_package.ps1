@@ -31,10 +31,18 @@ try {
     foreach ($file in $topLevelFiles) {
         Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $stage $file.Name) -Force
     }
-    foreach ($directoryName in @('assets', 'examples', 'opencode-go-quota-bridge')) {
+    foreach ($directoryName in @('assets', 'examples', 'opencode-go-quota-bridge', 'adapters')) {
         $source = Join-Path $root $directoryName
         if (Test-Path -LiteralPath $source -PathType Container) {
             Copy-Item -LiteralPath $source -Destination (Join-Path $stage $directoryName) -Recurse -Force
+        }
+    }
+    $docsStage = Join-Path $stage 'docs'
+    New-Item -ItemType Directory -Path $docsStage -Force | Out-Null
+    foreach ($docName in @('download.md', 'deployment-guide.md', 'providers-grokbot-muse-claude.md', 'privacy.md', 'provider-adapter.md')) {
+        $docSource = Join-Path $root ('docs\' + $docName)
+        if (Test-Path -LiteralPath $docSource -PathType Leaf) {
+            Copy-Item -LiteralPath $docSource -Destination (Join-Path $docsStage $docName) -Force
         }
     }
     # These files are generated from the user's local account/session and must

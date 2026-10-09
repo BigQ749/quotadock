@@ -11,3 +11,7 @@
 后台同步凭据按当前 Windows 用户范围使用 DPAPI 加密保存，仅用于向官方页面发起只读请求。Cookie 过期后应在本机重新配置，不要把 Cookie 粘贴到 Issue、Pull Request 或聊天窗口。
 
 如果发现安全问题，请不要公开提交真实凭据或可复现的会话内容；请先通过 GitHub Security Advisories 或仓库维护者的私下渠道报告。
+
+## 隐私与本地优先
+
+QuotaDock 无遥测、不上传额度或 Cookie。完整说明见 [`docs/privacy.md`](docs/privacy.md)。

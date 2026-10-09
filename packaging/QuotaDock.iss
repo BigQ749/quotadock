@@ -32,9 +32,16 @@ CloseApplications=yes
 RestartApplications=no
 
 [Languages]
+; ChineseSimplified.isl ships with Inno Setup 6 (compiler:Languages). CI/choco installs include it.
+; If a minimal local ISCC tree lacks the file, remove the chinesesimplified line and rebuild with English only.
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
+chinesesimplified.AutoStartTask=登录 Windows 时启动 QuotaDock
+chinesesimplified.StartupOptions=启动选项：
+chinesesimplified.LaunchAfterInstall=安装完成后启动 QuotaDock
+chinesesimplified.PowerShellMissing=未找到 PowerShell 7 或更高版本。QuotaDock 需要 PowerShell 7+ 才能运行。请先从 https://aka.ms/powershell-release?tag=stable 安装，然后再启动 QuotaDock。
 english.AutoStartTask=Start QuotaDock when I sign in to Windows
 english.StartupOptions=Startup options:
 english.LaunchAfterInstall=Launch QuotaDock after installation
@@ -54,6 +61,13 @@ Source: "..\TRADEMARKS.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\opencode-go-quota-bridge\*"; DestDir: "{app}\opencode-go-quota-bridge"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\adapters\*"; DestDir: "{app}\adapters"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\custom-provider.example.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\docs\download.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "..\docs\deployment-guide.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "..\docs\providers-grokbot-muse-claude.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "..\docs\privacy.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "..\docs\provider-adapter.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\QuotaDock"; Filename: "{app}\launch_quota_center.vbs"; WorkingDir: "{app}"; IconFilename: "{app}\assets\app\QuotaDock.ico"; Comment: "管理多个 AI 平台额度浮窗"

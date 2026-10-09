@@ -2,6 +2,17 @@
 
 QuotaDock 现在按系统提供 Windows 安装器和 macOS 原生预览包。Windows 普通用户应下载带 `Setup` 的安装器；Windows ZIP 只用于便携运行、故障回退和应用内部更新。下载页只发布已经实际构建的文件，源码分支不保存历史安装包，所有发行二进制统一放在 GitHub Releases。
 
+
+
+## 推荐下载（当前稳定版）
+
+- 安装器：[`QuotaDock-Setup-0.2.5.exe`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-Setup-0.2.5.exe)
+- 便携 ZIP：[`QuotaDock-v0.2.5.zip`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-v0.2.5.zip)
+- macOS：[`QuotaDock-macOS-v0.2.5.zip`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-macOS-v0.2.5.zip)
+- 校验：同版本 `SHA256SUMS.txt`
+
+**不要**下载 `Source code.zip` / `Source code.tar.gz`。Windows 未签名时 SmartScreen 可能拦截，属预期；请核对 SHA-256 后再安装。
+
 ## 应该下载什么
 
 | 系统 | 文件 | 说明 |
@@ -10,7 +21,7 @@ QuotaDock 现在按系统提供 Windows 安装器和 macOS 原生预览包。Win
 | Windows x86 | 同一个安装包 | Inno Setup 使用 x86 兼容模式；脚本依赖 PowerShell 7+ |
 | 便携/更新 | `QuotaDock-vX.Y.Z.zip` | 不显示安装向导；适合便携运行、回退和应用内部更新 |
 | Windows ARM64 | 暂无原生安装包 | 只有完成 ARM runner、安装测试和截图验收后才会发布 |
-| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.1 已在 arm64 runner 验证，读取本地 `providers.json` |
+| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.5 起随 Release 发布；请以最新 tag 资产为准，读取本地 `providers.json` |
 | macOS Intel (x86_64) | 暂无已验证包 | Intel 构建尚未完成真实 CI 构建；不要把 Apple Silicon 包当作 Intel/通用包 |
 | Linux | 暂不支持 | 当前没有 Linux UI 宿主与发行版 |
 
@@ -24,7 +35,7 @@ Get-Content .\SHA256SUMS.txt
 
 ## 安装向导会做什么
 
-- 显示欢迎页和 MIT 许可证确认页（当前安装器界面为 Inno Setup 默认英文界面）。
+- 显示欢迎页和 MIT 许可证确认页。v0.2.5 起优先使用简体中文界面（`ChineseSimplified.isl`）；若本地 Inno Setup 缺少该语言包，构建会失败——可临时只保留 `english` 语言行后重建，CI 的完整 Inno 安装包含该文件。
 - 允许选择安装盘和目录，默认安装到当前用户的 `%LOCALAPPDATA%\Programs\QuotaDock`，不要求管理员权限。
 - 创建开始菜单和桌面快捷方式。
 - 可选创建“登录 Windows 时自动启动”的用户启动项；默认不勾选。
@@ -44,3 +55,10 @@ macOS ZIP 解压后，把 `QuotaDock.app` 拖入“应用程序”。预览包�
 ## macOS 预览版边界
 
 macOS 版本使用 AppKit + SwiftUI 的独立 UI 宿主，读取 `~/Library/Application Support/QuotaDock/providers.json`。首个预览包不复用 Windows 的 PowerShell、DPAPI、Chrome 桥接或账号同步脚本；真实三平台同步需要逐个平台验证后再发布。详见 [`macOS 版本说明`](macos.md)。
+
+
+## 安装包内附带内容（v0.2.5+）
+
+- `adapters/`：可选本机同步脚本与说明（Grok Bot / Muse；Claude 为约定）。
+- `docs/` 子集：`download.md`、`deployment-guide.md`、`providers-grokbot-muse-claude.md`、`privacy.md`、`provider-adapter.md`。
+- `custom-provider.example.json`：自定义平台示例。
