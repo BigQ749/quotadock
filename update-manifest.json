@@ -1,9 +1,9 @@
 {
-  "version": "0.2.4",
+  "version": "0.2.5",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.4/QuotaDock-v0.2.4.zip",
-  "sha256": "92d13586986c0d685d6670915cd9f76657dce70d36277500dee6c97059f69fab",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.4",
-  "notes": "# QuotaDock v0.2.4\r\n\r\n## 新功能\r\n\r\n- 将 **Grok Bot**、**Muse**、**Claude** 提升为内置目录平台（与 Codex / Grok / OpenCode Go 同级）。\r\n- 新增品牌图：`assets/brand/grokbot-mark.png`、`muse-mark.png`、`claude-mark.png`。\r\n- 计量卡默认读取 `%LOCALAPPDATA%\\QuotaDock\\custom-data\\{grokbot|muse|claude}.json`，单窗口大百分比布局与 Grok 一致。\r\n- 提供可选同步适配器说明与示例脚本（`adapters/`）；凭证与 Cookie 仍仅保存在本机。\r\n- Claude 目前仅提供目录与数据约定，官方同步脚本待接入。\r\n\r\n## 说明\r\n\r\n- 升级安装后，其他电脑也会在中心看到这三张内置卡；本地同步器仍需各自机器配置。\r\n- 若本机曾用 `custom_providers.json` 注册同名 id，内置卡优先，自定义同名项会被忽略。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.4.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.4.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.4.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。"
+  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.5/QuotaDock-v0.2.5.zip",
+  "sha256": "2cdd22e3c60a51a3a91a39c5eddb3e8fbdeb5ef80da1a9a77b3dd8e02ff50035",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.5",
+  "notes": "# QuotaDock v0.2.5\r\n\r\n## 产品化\r\n\r\n- **可滚动平台列表**：管理中心用 Panel + AutoScroll，并限制最大高度适配常见 ~1080p 工作区，6+ 内置平台不再被裁切。\r\n- **首次运行新手引导**：本机仅显示一次三步中文叠加层（选平台 → 接同步器 → 浮窗藏边），并链到部署/适配器文档。\r\n- **托盘帮助菜单**：新手指南、下载页、隐私说明、GitHub、当前版本。\r\n- **空状态引导**：等待同步的计量卡可打开适配器说明；Claude 明确标注为「手动 JSON / 预览」，避免垃圾占位数据。\r\n- **更新对话框**：发现新版本时可打开 `releaseUrl` 发布说明；仍优先走本机校验安装。\r\n\r\n## 打包\r\n\r\n- 安装器与便携/更新 ZIP 均包含 `adapters/`。\r\n- 附带离线文档子集：`docs/download.md`、`docs/deployment-guide.md`、`docs/providers-grokbot-muse-claude.md`、`docs/privacy.md`、`docs/provider-adapter.md`，以及 `custom-provider.example.json`。\r\n- 安装器增加简体中文界面：`packaging/ChineseSimplified.isl` 随仓库 vendored，CI/本地无需额外语言包。\r\n\r\n## 文档与推广\r\n\r\n- README 下载 CTA 直达 Setup 深链；补充 SmartScreen/未签名、SHA256、勿下 Source code.zip 说明。\r\n- 中英文特性同步覆盖 Grok Bot、Muse、Claude；新增隐私说明页。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.5.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.5.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.5.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。\r\n\r\n## 已知边界（本版刻意延期）\r\n\r\n- Claude 官方同步脚本、Muse Cookie GUI 写入器、代码签名均未纳入本版。"
 }
