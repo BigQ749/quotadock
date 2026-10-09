@@ -1,9 +1,9 @@
 {
-  "version": "0.2.3",
+  "version": "0.2.4",
   "channel": "stable",
   "packageType": "zip",
-  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.3/QuotaDock-v0.2.3.zip",
-  "sha256": "559a7c6043f70e928c7fdf8c298e0f5dd105f7a7b77ed562da667ad45c9953ac",
-  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.3",
-  "notes": "# QuotaDock v0.2.3\r\n\r\n## 修复\r\n\r\n- 修复浮窗自动藏边后，状态栏可能被其他置顶应用覆盖的问题。\r\n- 状态栏会在失去焦点时及藏边期间重新提升到最上层，且不会抢占前台应用的输入焦点。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.3.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.3.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.3.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。\r\n\r\nWindows 安全桌面（如 UAC 提示）及独占全屏程序受系统窗口管理限制，普通桌面浮窗无法覆盖。"
+  "downloadUrl": "https://github.com/BigQ749/quotadock/releases/download/v0.2.4/QuotaDock-v0.2.4.zip",
+  "sha256": "92d13586986c0d685d6670915cd9f76657dce70d36277500dee6c97059f69fab",
+  "releaseUrl": "https://github.com/BigQ749/quotadock/releases/tag/v0.2.4",
+  "notes": "# QuotaDock v0.2.4\r\n\r\n## 新功能\r\n\r\n- 将 **Grok Bot**、**Muse**、**Claude** 提升为内置目录平台（与 Codex / Grok / OpenCode Go 同级）。\r\n- 新增品牌图：`assets/brand/grokbot-mark.png`、`muse-mark.png`、`claude-mark.png`。\r\n- 计量卡默认读取 `%LOCALAPPDATA%\\QuotaDock\\custom-data\\{grokbot|muse|claude}.json`，单窗口大百分比布局与 Grok 一致。\r\n- 提供可选同步适配器说明与示例脚本（`adapters/`）；凭证与 Cookie 仍仅保存在本机。\r\n- Claude 目前仅提供目录与数据约定，官方同步脚本待接入。\r\n\r\n## 说明\r\n\r\n- 升级安装后，其他电脑也会在中心看到这三张内置卡；本地同步器仍需各自机器配置。\r\n- 若本机曾用 `custom_providers.json` 注册同名 id，内置卡优先，自定义同名项会被忽略。\r\n\r\n## 下载\r\n\r\n- `QuotaDock-Setup-0.2.4.exe`：Windows 安装器。\r\n- `QuotaDock-v0.2.4.zip`：Windows 便携/本地更新包。\r\n- `QuotaDock-macOS-v0.2.4.zip`：macOS 原生预览包（Apple Silicon arm64，macOS 13+）。"
 }
