@@ -47,28 +47,34 @@ $onboardingSeenPath = Join-Path $stateRoot 'onboarding_seen.json'
 $quotaDockDocsRoot = 'https://github.com/BigQ749/quotadock'
 
 function Resolve-QuotaDockPowerShell {
-    $candidates = @()
+    $candidates = New-Object System.Collections.ArrayList
     $command = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Source)) {
-        $candidates += $command.Source
+        [void]$candidates.Add($command.Source)
     }
-
     $programFiles = [Environment]::GetEnvironmentVariable('ProgramFiles')
     $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
     if (-not [string]::IsNullOrWhiteSpace($programFiles)) {
-        $candidates += (Join-Path $programFiles 'PowerShell\7\pwsh.exe')
+        [void]$candidates.Add((Join-Path $programFiles 'PowerShell\7\pwsh.exe'))
     }
     if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
-        $candidates += (Join-Path $programFilesX86 'PowerShell\7\pwsh.exe')
+        [void]$candidates.Add((Join-Path $programFilesX86 'PowerShell\7\pwsh.exe'))
     }
-
+    $legacy = Get-Command powershell.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $legacy -and -not [string]::IsNullOrWhiteSpace($legacy.Source)) {
+        [void]$candidates.Add($legacy.Source)
+    }
+    $windir = [Environment]::GetEnvironmentVariable('SystemRoot')
+    if (-not [string]::IsNullOrWhiteSpace($windir)) {
+        [void]$candidates.Add((Join-Path $windir 'System32\WindowsPowerShell\v1.0\powershell.exe'))
+        [void]$candidates.Add((Join-Path $windir 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'))
+    }
     $resolved = @($candidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) } | Select-Object -First 1)
     if ($resolved.Count -eq 0) {
-        throw 'QuotaDock 需要 PowerShell 7+（pwsh.exe），但本机未找到。请先安装 PowerShell 7。'
+        throw 'QuotaDock 需要 PowerShell（优先 pwsh.exe / PowerShell 7+，否则 Windows PowerShell 5.1），但本机未找到。可从 https://aka.ms/powershell-release?tag=stable 安装 PowerShell 7，或确认系统自带的 powershell.exe 可用。'
     }
     return [string]$resolved[0]
 }
-
 $powershell = Resolve-QuotaDockPowerShell
 $appIconPath = Join-Path $root 'assets\app\QuotaDock.ico'
 
@@ -2067,8 +2073,8 @@ function Show-OnboardingOverlay {
     $overlay.BringToFront()
 
     $card = New-Object System.Windows.Forms.Panel
-    $card.Size = New-Object System.Drawing.Size(640, 420)
-    $card.Location = New-Object System.Drawing.Point([int](($uiWidth - 640) / 2), [int](($uiHeight - 420) / 2))
+    $card.Size = New-Object System.Drawing.Size(640, 460)
+    $card.Location = New-Object System.Drawing.Point([int](($uiWidth - 640) / 2), [int](($uiHeight - 460) / 2))
     $card.BackColor = $surfaceRaised
     $overlay.Controls.Add($card)
     Set-RoundedRegion $card 22
@@ -2078,9 +2084,11 @@ function Show-OnboardingOverlay {
     $s2 = Add-TextLabel '② 接同步器 — 用适配器或自建脚本把额度写入本地 JSON。' (New-Object System.Drawing.Point(36, 136)) (New-Object System.Drawing.Size(560, 36)) (New-UiFont 'Microsoft YaHei UI' 18) $foreground $card
     $s3 = Add-TextLabel '③ 浮窗藏边 — 拖到左/右/上边缘可自动藏边，下边不触发。' (New-Object System.Drawing.Point(36, 182)) (New-Object System.Drawing.Size(560, 36)) (New-UiFont 'Microsoft YaHei UI' 18) $foreground $card
 
+    $s4 = Add-TextLabel '提示：未代码签名时 SmartScreen 可能提示未知发布者，请核对 SHA-256 后仍要运行；Windows PowerShell 5.1 已支持。' (New-Object System.Drawing.Point(36, 220)) (New-Object System.Drawing.Size(560, 40)) (New-UiFont 'Microsoft YaHei UI' 14) $muted $card
+
     $docLink = New-Object System.Windows.Forms.LinkLabel
     $docLink.Text = '打开新手部署指南'
-    $docLink.Location = New-Object System.Drawing.Point(36, 240)
+    $docLink.Location = New-Object System.Drawing.Point(36, 268)
     $docLink.Size = New-Object System.Drawing.Size(240, 28)
     $docLink.Font = New-UiFont 'Microsoft YaHei UI' 16
     $docLink.LinkColor = $accent
@@ -2091,7 +2099,7 @@ function Show-OnboardingOverlay {
 
     $adapterLink = New-Object System.Windows.Forms.LinkLabel
     $adapterLink.Text = '查看适配器说明（Grok Bot / Muse / Claude）'
-    $adapterLink.Location = New-Object System.Drawing.Point(36, 276)
+    $adapterLink.Location = New-Object System.Drawing.Point(36, 304)
     $adapterLink.Size = New-Object System.Drawing.Size(420, 28)
     $adapterLink.Font = New-UiFont 'Microsoft YaHei UI' 16
     $adapterLink.LinkColor = $accent
@@ -2102,7 +2110,7 @@ function Show-OnboardingOverlay {
 
     $startBtn = New-Object System.Windows.Forms.Button
     $startBtn.Text = '开始使用'
-    $startBtn.Location = New-Object System.Drawing.Point(36, 330)
+    $startBtn.Location = New-Object System.Drawing.Point(36, 358)
     $startBtn.Size = New-Object System.Drawing.Size(180, 48)
     $startBtn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $startBtn.FlatAppearance.BorderColor = $border

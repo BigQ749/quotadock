@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$PackageUrl = '',
     [string]$PackagePath = '',
     [string]$ExpectedSha256 = '',
@@ -14,7 +14,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $scriptPath = $MyInvocation.MyCommand.Path
 $scriptRoot = Split-Path -Parent $scriptPath
-$powershell = (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+$pathResolver = Join-Path $scriptRoot 'quota_dock_paths.ps1'
+if (Test-Path -LiteralPath $pathResolver -PathType Leaf) { . $pathResolver }
+$powershell = Resolve-QuotaDockPowerShell
 $updateLog = Join-Path $env:TEMP 'quotadock-update.log'
 $failureLog = Join-Path $env:TEMP 'quotadock-update-error.log'
 
@@ -147,20 +149,20 @@ function Restore-QuotaDockBackup {
     }
 }
 
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    throw 'QuotaDock 本地更新器需要 PowerShell 7+（pwsh.exe）。'
+if ($PSVersionTable.PSVersion.Major -lt 5) {
+    throw 'QuotaDock 本地更新器需要 Windows PowerShell 5.1 或更高版本（推荐 PowerShell 7+）。'
 }
 
 if ($SelfTest) {
     if ($null -eq $powershell -or -not (Test-Path -LiteralPath $powershell)) {
-        throw 'UPDATE_INSTALLER_SELFTEST_FAIL: 未找到 PowerShell 7+。'
+        throw 'UPDATE_INSTALLER_SELFTEST_FAIL: 未找到可用的 PowerShell（pwsh 或 powershell.exe）。'
     }
     foreach ($name in @('quota_center.ps1', 'quota_fusion_host.ps1', 'VERSION', 'check_for_updates.ps1')) {
         if (-not (Test-Path -LiteralPath (Join-Path $scriptRoot $name))) {
             throw ('UPDATE_INSTALLER_SELFTEST_FAIL: 缺少 ' + $name)
         }
     }
-    Write-Output 'UPDATE_INSTALLER_SELFTEST_PASS powershell=7+ mode=download-verify-stage-replace-restart'
+    Write-Output ('UPDATE_INSTALLER_SELFTEST_PASS powershell=' + $PSVersionTable.PSVersion.ToString() + ' mode=download-verify-stage-replace-restart')
     exit 0
 }
 

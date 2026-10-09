@@ -15,3 +15,6 @@
 ## 隐私与本地优先
 
 QuotaDock 无遥测、不上传额度或 Cookie。完整说明见 [`docs/privacy.md`](docs/privacy.md)。
+## Windows 代码签名与 SmartScreen
+
+公开发布的 `QuotaDock-Setup-*.exe` 若未经 Authenticode 签名，SmartScreen 可能显示「未知发布者」。消除该提示需要付费的 OV/EV 代码签名证书与安全的私钥保管；**切勿**把 PFX、密码或令牌提交到本仓库。

@@ -31,16 +31,16 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 
 **首选（Windows 安装器，当前稳定版）：**
 
-[⬇️ 下载 QuotaDock-Setup-0.2.5.exe](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-Setup-0.2.5.exe)
+[⬇️ 下载 QuotaDock-Setup-0.2.6.exe](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-Setup-0.2.6.exe)
 
 次要选项：
 
-- 便携 / 应用内更新包：[QuotaDock-v0.2.5.zip](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-v0.2.5.zip)
-- macOS 预览（Apple Silicon）：[QuotaDock-macOS-v0.2.5.zip](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-macOS-v0.2.5.zip)
+- 便携 / 应用内更新包：[QuotaDock-v0.2.6.zip](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-v0.2.6.zip)
+- macOS 预览（Apple Silicon）：[QuotaDock-macOS-v0.2.6.zip](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-macOS-v0.2.6.zip)
 - 校验：同版本 [SHA256SUMS.txt](https://github.com/BigQ749/quotadock/releases/latest) · 选择说明见 [docs/download.md](docs/download.md)
 
 > **注意**
-> - Windows 未签名时 SmartScreen 可能提示“未知发布者”，属预期；请核对 SHA-256 后再安装。
+> - Windows **未代码签名**时，SmartScreen /「未知发布者」拦截属预期；**只有购买并配置 OV/EV 代码签名证书才能真正消除**。请核对 SHA-256 后选择「仍要运行」/「更多信息」。详见 [docs/download.md](docs/download.md)。
 > - **不要**下载 Release 页的 `Source code (zip/tar.gz)` 当作安装包。
 > - 隐私：无遥测、不上传额度/Cookie，见 [docs/privacy.md](docs/privacy.md)。
 
@@ -48,10 +48,10 @@ QuotaDock is a local-first Windows quota dashboard and floating overlay for Code
 
 | 设备 | 下载 | 状态 |
 |---|---|---|
-| Windows 10/11 x64 | `QuotaDock-Setup-0.2.5.exe` | ✅ 主要验证目标 |
-| Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；请使用 PowerShell 7+ |
+| Windows 10/11 x64 | `QuotaDock-Setup-0.2.6.exe` | ✅ 主要验证目标 |
+| Windows 10/11 x86 | 同一安装包 | ✅ Inno Setup x86 兼容模式；Windows PowerShell 5.1+（推荐 7+） |
 | Windows ARM64 | 暂无原生包 | ⚠️ 未作为发行版承诺；不要把 x64 安装包称为 ARM 原生版 |
-| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-v0.2.5.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；读取本地 `providers.json` |
+| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-v0.2.6.zip` | 🧪 原生 SwiftUI 菜单栏/浮动面板预览版；读取本地 `providers.json` |
 | macOS Intel (x86_64) | 暂无已验证包 | ⚠️ Intel 构建尚未完成真实 CI 构建，不把 Apple Silicon 包称为通用包 |
 | Linux | 暂不提供 | 🧭 当前没有 Linux UI 宿主与发行版 |
 
@@ -72,13 +72,13 @@ macOS ZIP 解压后将 `QuotaDock.app` 拖到“应用程序”文件夹即可�
 
 ## 安装
 
-1. 使用上方深链下载 `QuotaDock-Setup-0.2.5.exe`，或打开 [Releases](https://github.com/BigQ749/quotadock/releases/latest)。
+1. 使用上方深链下载 `QuotaDock-Setup-0.2.6.exe`，或打开 [Releases](https://github.com/BigQ749/quotadock/releases/latest)。
 2. 同时下载同版本 `SHA256SUMS.txt` 并校验；**不要**下载 Source code 压缩包当作安装程序。
-3. 若 SmartScreen 提示未知发布者：属未签名预期行为，核对哈希后再“仍要运行”。
+3. 若 SmartScreen 提示未知发布者：未签名预期行为（消除需代码签名证书）；核对哈希后点「更多信息」→「仍要运行」。
 4. 运行安装器，按向导选择目录、阅读 MIT 许可证、快捷方式与开机启动。
 5. 通过桌面/开始菜单快捷方式启动；安装目录里的 VBS 不需要手动操作。
 
-第一次部署的用户强烈建议先看 [新手部署指南（实测经验版）](docs/deployment-guide.md)：里面包含环境检查、首次同步、关掉浏览器后的后台同步，以及“PowerShell 7+ 弹窗”“同步时间不更新”等真实踩坑的解决办法。
+第一次部署的用户强烈建议先看 [新手部署指南（实测经验版）](docs/deployment-guide.md)：里面包含环境检查、首次同步、关掉浏览器后的后台同步，以及 SmartScreen、PowerShell 5.1/7 兼容、“同步时间不更新”等真实踩坑的解决办法。
 
 安装器由 `.github/workflows/release.yml` 在 Windows runner 上使用 Inno Setup 构建；安装器、便携 ZIP 和校验文件只放在 GitHub Releases，源码仓库不提交编译机的个人数据或历史下载包。
 

@@ -6,47 +6,59 @@ QuotaDock 现在按系统提供 Windows 安装器和 macOS 原生预览包。Win
 
 ## 推荐下载（当前稳定版）
 
-- 安装器：[`QuotaDock-Setup-0.2.5.exe`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-Setup-0.2.5.exe)
-- 便携 ZIP：[`QuotaDock-v0.2.5.zip`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-v0.2.5.zip)
-- macOS：[`QuotaDock-macOS-v0.2.5.zip`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-macOS-v0.2.5.zip)
+- 安装器：[`QuotaDock-Setup-0.2.6.exe`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-Setup-0.2.6.exe)
+- 便携 ZIP：[`QuotaDock-v0.2.6.zip`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-v0.2.6.zip)
+- macOS：[`QuotaDock-macOS-v0.2.6.zip`](https://github.com/BigQ749/quotadock/releases/latest/download/QuotaDock-macOS-v0.2.6.zip)
 - 校验：同版本 `SHA256SUMS.txt`
 
-**不要**下载 `Source code.zip` / `Source code.tar.gz`。Windows 未签名时 SmartScreen 可能拦截，属预期；请核对 SHA-256 后再安装。
+**不要**下载 `Source code.zip` / `Source code.tar.gz`。Windows **未代码签名**时 SmartScreen 可能拦截「未知发布者」，属预期；**付费 OV/EV 代码签名证书**才能真正去掉该提示。请核对 SHA-256 后「仍要运行」。
 
 ## 应该下载什么
 
 | 系统 | 文件 | 说明 |
 |---|---|---|
 | Windows 10/11 x64 | `QuotaDock-Setup-X.Y.Z.exe` | 首选版本；带安装向导、目录选择、许可证和开机启动选项 |
-| Windows x86 | 同一个安装包 | Inno Setup 使用 x86 兼容模式；脚本依赖 PowerShell 7+ |
+| Windows x86 | 同一个安装包 | Inno Setup 使用 x86 兼容模式；脚本支持 Windows PowerShell 5.1+（推荐 7+） |
 | 便携/更新 | `QuotaDock-vX.Y.Z.zip` | 不显示安装向导；适合便携运行、回退和应用内部更新 |
 | Windows ARM64 | 暂无原生安装包 | 只有完成 ARM runner、安装测试和截图验收后才会发布 |
-| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.5 起随 Release 发布；请以最新 tag 资产为准，读取本地 `providers.json` |
+| macOS 13+ Apple Silicon (arm64) | `QuotaDock-macOS-vX.Y.Z.zip` | 原生 SwiftUI 菜单栏/浮动面板预览版；v0.2.6 起随 Release 发布；请以最新 tag 资产为准，读取本地 `providers.json` |
 | macOS Intel (x86_64) | 暂无已验证包 | Intel 构建尚未完成真实 CI 构建；不要把 Apple Silicon 包当作 Intel/通用包 |
 | Linux | 暂不支持 | 当前没有 Linux UI 宿主与发行版 |
 
 如果 Release 页面没有 `QuotaDock-Setup-X.Y.Z.exe`，说明该版本的 Windows 构建还没有完成；不要把 ZIP 当成安装器。不要把 `SHA256SUMS.txt` 当作安装器。它用于下载后校验：
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -Command '$PSVersionTable.PSVersion'
+powershell -NoProfile -Command '$PSVersionTable.PSVersion'
 Get-FileHash .\QuotaDock-Setup-X.Y.Z.exe -Algorithm SHA256
 Get-Content .\SHA256SUMS.txt
 ```
 
 ## 安装向导会做什么
 
-- 显示欢迎页和 MIT 许可证确认页。v0.2.5 起优先使用简体中文界面；`packaging/ChineseSimplified.isl` 已随仓库提供（不依赖 CI 机器上的 Inno `Languages` 目录）。仍保留英文作为第二语言。
+- 显示欢迎页和 MIT 许可证确认页。v0.2.6 起优先使用简体中文界面；`packaging/ChineseSimplified.isl` 已随仓库提供（不依赖 CI 机器上的 Inno `Languages` 目录）。仍保留英文作为第二语言。
 - 允许选择安装盘和目录，默认安装到当前用户的 `%LOCALAPPDATA%\Programs\QuotaDock`，不要求管理员权限。
 - 创建开始菜单和桌面快捷方式。
 - 可选创建“登录 Windows 时自动启动”的用户启动项；默认不勾选。
-- 安装前检查 PowerShell 7+；缺少时会提示安装地址。
+- 安装前检查可用 PowerShell：优先 7+，否则使用系统自带 5.1；仅在两者都缺失时提示并可打开安装地址。
 - 安装完成后可直接启动 QuotaDock。
 - 不会把 Cookie、真实额度 JSON 或运行日志打进安装包。
 - 卸载时保留 `%LOCALAPPDATA%\QuotaDock`，避免误删用户配置和加密凭据。
 
 安装目录里的 `.vbs` 文件只是隐藏启动包装，桌面用户不需要手动运行它；正常入口是“QuotaDock”桌面或开始菜单快捷方式。
 
-macOS ZIP 解压后，把 `QuotaDock.app` 拖入“应用程序”。预览包目前未做 Developer ID 签名和公证；首次打开可能需要到“系统设置 → 隐私与安全性”允许。macOS 不需要 PowerShell 7+，也不会读取 Windows 的 `%LOCALAPPDATA%`。
+macOS ZIP 解压后，把 `QuotaDock.app` 拖入“应用程序”。预览包目前未做 Developer ID 签名和公证；首次打开可能需要到“系统设置 → 隐私与安全性”允许。macOS 不需要 PowerShell，也不会读取 Windows 的 `%LOCALAPPDATA%`。
+
+## Windows 代码签名（维护者可选）
+
+当前发行安装器**未** Authenticode 签名。若你持有 OV/EV 代码签名证书，可在构建后对 `QuotaDock-Setup-*.exe` 签名以显著降低 SmartScreen 提示：
+
+```powershell
+# 示例：需本机已导入代码签名证书（不要把 PFX/密码提交进仓库）
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a .\dist\QuotaDock-Setup-0.2.6.exe
+signtool verify /pa .\dist\QuotaDock-Setup-0.2.6.exe
+```
+
+没有证书时，请继续依赖 SHA-256 校验 +「仍要运行」说明；不要尝试绕过 SmartScreen 的不安全技巧。
 
 ## 更新
 
@@ -57,7 +69,7 @@ macOS ZIP 解压后，把 `QuotaDock.app` 拖入“应用程序”。预览包�
 macOS 版本使用 AppKit + SwiftUI 的独立 UI 宿主，读取 `~/Library/Application Support/QuotaDock/providers.json`。首个预览包不复用 Windows 的 PowerShell、DPAPI、Chrome 桥接或账号同步脚本；真实三平台同步需要逐个平台验证后再发布。详见 [`macOS 版本说明`](macos.md)。
 
 
-## 安装包内附带内容（v0.2.5+）
+## 安装包内附带内容（v0.2.6+）
 
 - `adapters/`：可选本机同步脚本与说明（Grok Bot / Muse；Claude 为约定）。
 - `docs/` 子集：`download.md`、`deployment-guide.md`、`providers-grokbot-muse-claude.md`、`privacy.md`、`provider-adapter.md`。

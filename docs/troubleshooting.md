@@ -1,13 +1,13 @@
 # 故障排查
 
-第一次部署请先看 [新手部署指南](deployment-guide.md)，常见问题（PowerShell 7+ 弹窗、首次同步、后台同步）都在那里按步骤排过。
+第一次部署请先看 [新手部署指南](deployment-guide.md)，常见问题（SmartScreen、PowerShell 5.1/7、首次同步、后台同步）都在那里按步骤排过。
 
 ## 浮窗打不开或一闪而过
 
 先用 PowerShell 前台运行：
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 ```
 
 再运行 `tests/selftest.ps1`。检查 `%TEMP%\quota-center-error.log`、`%TEMP%\quota-fusion-host-error.log` 和 `%TEMP%\quota-fusion-host-paint.log`，日志中不应包含 Cookie 或完整页面 HTML。
@@ -37,3 +37,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\quota_center.ps1
 ## 更新弹窗没有出现
 
 启动时更新检查每 24 小时一次；当前版本没有高于 `VERSION` 的 GitHub Release 时不会自动弹窗。点击管理中心的 `↑ 检查更新` 会显示当前版本，并立即检查 GitHub Release；网络失败会显示可重试提示。调试时可删除 `%LOCALAPPDATA%\QuotaDock\update_check.json`，或设置 `QUOTADOCK_DISABLE_UPDATE_CHECK=1` 暂时关闭。
+## SmartScreen / 未知发布者
+
+未 Authenticode 签名时，Windows 可能拦截安装包或首次运行。这**不能**靠改脚本彻底消除，需要 OV/EV 代码签名证书。用户侧请：
+
+1. 从 GitHub Releases 下载 `QuotaDock-Setup-*.exe` 与 `SHA256SUMS.txt`
+2. `Get-FileHash` 核对哈希
+3. SmartScreen 对话框选「更多信息」→「仍要运行」
+
+维护者签名示例见 [download.md](download.md) 的「Windows 代码签名」一节。

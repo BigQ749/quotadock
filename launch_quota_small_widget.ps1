@@ -14,10 +14,8 @@ if (-not (Test-Path -LiteralPath $pathResolverPath -PathType Leaf)) {
 . $pathResolverPath
 $hostPath = Join-Path $root 'quota_fusion_host.ps1'
 $sourceConfigPath = Join-Path $env:LOCALAPPDATA 'QuotaDock\quota_sources.json'
-$powershell7 = (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source
-if ([string]::IsNullOrWhiteSpace($powershell7)) {
-    $powershell7 = 'pwsh.exe'
-}
+$powershell7 = Resolve-QuotaDockPowerShell
+$powershellProcessName = Get-QuotaDockPowerShellProcessName $powershell7
 
 # One WMI snapshot per launcher run. A full Win32_Process enumeration costs
 # roughly half a second, and startup previously repeated it for every check.
@@ -161,7 +159,7 @@ if ($Provider -eq 'codex') {
         else {
             # Older sibling integrations are kept compatible: fall back to their
             # original resident mode instead of passing an unsupported parameter.
-            $loop = Keep-One-QuotaDockSyncProcess $processPattern $loopPath 'pwsh.exe'
+            $loop = Keep-One-QuotaDockSyncProcess $processPattern $loopPath $powershellProcessName
             if ($null -eq $loop) {
                 Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $loopPath) -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $loopPath)
             }
@@ -211,7 +209,7 @@ elseif ($Provider -eq 'opencode') {
             Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath, '-Once')
         }
         else {
-            $sync = Keep-One-QuotaDockSyncProcess '*opencode_go_background_sync.ps1*' $backgroundPath 'pwsh.exe'
+            $sync = Keep-One-QuotaDockSyncProcess '*opencode_go_background_sync.ps1*' $backgroundPath $powershellProcessName
             if ($null -eq $sync -and (Test-Path -LiteralPath $backgroundPath)) {
                 Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $backgroundPath, '-IntervalSeconds', '60')
             }
@@ -225,7 +223,7 @@ elseif ($Provider -eq 'opencode') {
             } |
             ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
         $bridgePath = Join-Path $root 'opencode_go_browser_bridge.ps1'
-        $bridge = Keep-One-QuotaDockSyncProcess '*opencode_go_browser_bridge.ps1*' $bridgePath 'pwsh.exe'
+        $bridge = Keep-One-QuotaDockSyncProcess '*opencode_go_browser_bridge.ps1*' $bridgePath $powershellProcessName
         if ($null -eq $bridge -and (Test-Path -LiteralPath $bridgePath)) {
             Start-Process -FilePath $powershell7 -WindowStyle Hidden -WorkingDirectory $root -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $bridgePath)
         }
@@ -233,5 +231,5 @@ elseif ($Provider -eq 'opencode') {
 }
 
 if (-not $SkipHost -and (Test-Path -LiteralPath $hostPath)) {
-    Start-Process pwsh.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $hostPath, '-Provider', $Provider)
+    Start-Process -FilePath $powershell7 -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $hostPath, '-Provider', $Provider)
 }

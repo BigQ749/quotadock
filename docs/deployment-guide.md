@@ -5,43 +5,43 @@
 ## 1. 部署前检查清单
 
 - Windows 10/11 x64 电脑。
-- PowerShell 7+（`pwsh.exe`）。经典安装版和微软商店版都支持，见第 2 节。
+- Windows PowerShell **5.1+**（系统自带即可）。可选安装 PowerShell 7+（`pwsh.exe`）以获得更好体验，见第 2 节。
 - 可选：Chrome 浏览器。OpenCode Go 页面桥接模式需要它；后台同步模式不需要它。
 
-## 2. 先确认 PowerShell 7 装好了
+## 2. 确认可用的 PowerShell（5.1 即可）
 
-打开 PowerShell 7 或 Windows Terminal，运行：
+v0.2.6 起，QuotaDock **不再强制 PowerShell 7**。启动器会：
+
+1. 优先使用 `pwsh.exe`（PowerShell 7+，若已安装）
+2. 否则回退到 `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`（Windows 10/11 自带 5.1）
+
+在「Windows PowerShell」或 Windows Terminal 中确认：
 
 ```powershell
-pwsh -NoProfile -Command '$PSVersionTable.PSVersion'
+powershell -NoProfile -Command '$PSVersionTable.PSVersion'
+where.exe powershell
 where.exe pwsh
 ```
 
-`pwsh` 有两种常见安装方式：
+`pwsh`（可选）常见安装方式：
 
 | 安装方式 | 典型路径 | 说明 |
 |---|---|---|
 | 经典 MSI 版 | `C:\Program Files\PowerShell\7\pwsh.exe` | 启动器最容易找到 |
-| 微软商店 MSIX 版 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_*\pwsh.exe` | 通过 WindowsApps 里的执行别名启动，别名本身不是普通文件 |
+| 微软商店 MSIX 版 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_*\pwsh.exe` | 通过执行别名启动 |
+| 系统自带 5.1 | `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` | **默认即可运行 QuotaDock** |
 
-商店版可以用下面命令确认版本：
+### 常见坑：旧版弹出 “需要 PowerShell 7+” / 「未找到 PowerShell 7」
 
-```powershell
-Get-AppxPackage -Name Microsoft.PowerShell
-```
+症状：双击快捷方式后提示必须安装 PowerShell 7。
 
-### 常见坑：弹出 “QuotaDock requires PowerShell 7+”
-
-症状：双击 QuotaDock 快捷方式，弹窗提示需要 PowerShell 7+。
-
-原因：旧版启动器只检查 `C:\Program Files\PowerShell\7\pwsh.exe`，而商店版 PowerShell 装在 WindowsApps 里，于是误判为“没装”。**这不是真的缺 PowerShell，是启动器找不到它。**
+原因：v0.2.5 及更早启动器/安装器硬性要求 `pwsh.exe`。
 
 解决：
 
-1. 先确认 `where.exe pwsh` 有输出；有输出就说明装好了。
-2. 升级到包含启动器修复的版本。修复后的启动器会依次检查 Program Files、WindowsApps 别名、注册表 App Paths 和 `where.exe`（详见 `launch_quota_center.vbs` 等 4 个启动脚本）；如果某个发行版不小心回退了启动器，本机可以直接用修复后的脚本覆盖安装目录里的同名文件。
-3. 升级后仍弹窗：检查 Windows 设置里“应用执行别名”是否把 PowerShell 的别名关掉了；或者直接安装经典 MSI 版 PowerShell 7。
-
+1. 升级到 **v0.2.6+**（本机有 Windows PowerShell 5.1 即可启动）。
+2. 若仍想用 PowerShell 7：从 https://aka.ms/powershell-release?tag=stable 安装（推荐但非必须）。
+3. 若连 5.1 都提示找不到：检查系统文件，或在启动器对话框选择打开 aka.ms 安装页。
 ## 3. 下载并校验安装包
 
 1. 打开 [Releases](https://github.com/BigQ749/quotadock/releases)，下载 `QuotaDock-Setup-*.exe` 和同版本 `SHA256SUMS.txt`。
@@ -137,7 +137,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_background
 
 ### 7.2 “为什么打开的是终端？不能是 exe 吗？”
 
-QuotaDock 是 PowerShell 7 + WinForms 写的 Windows 应用，安装器生成的桌面快捷方式会以隐藏窗口方式启动，所以日常使用不需要自己开终端。`QuotaDock-Setup-*.exe` 是安装包，不是便携版程序；关掉快捷方式启动的窗口，应用进程仍在后台运行。
+QuotaDock 是 PowerShell（5.1+ / 推荐 7+）+ WinForms 写的 Windows 应用，安装器生成的桌面快捷方式会以隐藏窗口方式启动，所以日常使用不需要自己开终端。`QuotaDock-Setup-*.exe` 是安装包，不是便携版程序；关掉快捷方式启动的窗口，应用进程仍在后台运行。
 
 ### 7.3 “我关掉 Chrome 之后额度就不更新了”
 
