@@ -10,7 +10,7 @@
 [![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4)](docs/download.md)
 [![macOS](https://img.shields.io/badge/platform-macOS%2013%2B-111111)](docs/macos.md)
 
-一个安静、可组合的 AI 额度浮窗：Windows 版把 Codex、Grok、OpenCode Go 和自定义平台放在桌面边缘；macOS 版使用原生菜单栏与浮动面板。各平台可以按需单独打开，也可以拖到一起成为一个真正可整体移动的融合窗口。
+一个安静、可组合的 AI 额度浮窗：Windows 版把 Codex、Grok、OpenCode Go、Grok Bot、Muse、Claude 和自定义平台放在桌面边缘；macOS 版使用原生菜单栏与浮动面板。各平台可以按需单独打开，也可以拖到一起成为一个真正可整体移动的融合窗口。
 
 QuotaDock is a local-first Windows quota dashboard and floating overlay for Codex, Grok, OpenCode Go, Claude Code, and custom providers. It reads local quota snapshots, keeps provider cards independent or fused, and leaves downloads, updates, and credential handling under the user's control.
 
@@ -167,6 +167,7 @@ swift build -c release
 - [`macos/QuotaDockMac/`](macos/QuotaDockMac/)：macOS 原生 SwiftUI 菜单栏/浮动面板预览版。
 
 先读 [`llms.txt`](llms.txt)、[`docs/architecture.md`](docs/architecture.md) 和 [`docs/provider-adapter.md`](docs/provider-adapter.md)，再修改项目。新增平台应优先新增适配器或本地 JSON 源，不要复制一套新的原生浮窗。
+- [Grok Bot / Muse / Claude 内置平台](docs/providers-grokbot-muse-claude.md)
 
 ## 常见问题
 

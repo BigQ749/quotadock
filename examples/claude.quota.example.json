@@ -1,0 +1,17 @@
+{
+  "title": "Claude",
+  "badge": "Claude",
+  "status": "等待同步",
+  "updatedAt": "2026-01-01T12:00:00+08:00",
+  "lastSuccessAt": null,
+  "lastAttemptAt": "2026-01-01T12:00:00+08:00",
+  "syncStatus": "pending",
+  "lastError": null,
+  "windows": [
+    {
+      "label": "周额度",
+      "remainingPercent": null,
+      "resetText": "等待同步"
+    }
+  ]
+}

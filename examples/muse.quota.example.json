@@ -1,0 +1,17 @@
+{
+  "title": "Muse",
+  "badge": "Pro",
+  "status": "已同步 12:00",
+  "updatedAt": "2026-01-01T12:00:00+08:00",
+  "lastSuccessAt": "2026-01-01T12:00:00+08:00",
+  "lastAttemptAt": "2026-01-01T12:00:05+08:00",
+  "syncStatus": "success",
+  "lastError": null,
+  "windows": [
+    {
+      "label": "周额度",
+      "remainingPercent": 58,
+      "resetText": "示例：周一 00:00"
+    }
+  ]
+}
