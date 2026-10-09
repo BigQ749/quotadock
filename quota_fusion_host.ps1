@@ -62,6 +62,9 @@ $script:BrandImagePaths = @{
     codex    = Join-Path $baseDir 'assets\brand\chatgpt-mark.png'
     grok     = Join-Path $baseDir 'assets\brand\grok-mark.png'
     opencode = Join-Path $baseDir 'assets\brand\opencode-mark.png'
+    grokbot  = Join-Path $baseDir 'assets\brand\grokbot-mark.png'
+    muse     = Join-Path $baseDir 'assets\brand\muse-mark.png'
+    claude   = Join-Path $baseDir 'assets\brand\claude-mark.png'
 }
 # The official artboards have different internal padding. These factors normalize
 # the visible mark height while keeping each logo's original proportions intact.
@@ -69,6 +72,9 @@ $script:BrandRenderScales = @{
     codex    = 0.90
     grok     = 0.95
     opencode = 1.10
+    grokbot  = 1.00
+    muse     = 1.00
+    claude   = 1.00
 }
 $script:BrandImages = @{}
 $script:LastHostStateWriteAt = [datetime]::MinValue
@@ -195,6 +201,33 @@ $script:Profiles = @{
         DefaultX  = 24
         DefaultY  = 330
     }
+    grokbot = @{
+        Title     = 'Grok Bot'
+        Accent    = @(90, 200, 175)
+        Width     = 460
+        Height    = 230
+        DefaultX  = 592
+        DefaultY  = 170
+        Kind      = 'meter'
+    }
+    muse = @{
+        Title     = 'Muse'
+        Accent    = @(120, 170, 255)
+        Width     = 460
+        Height    = 230
+        DefaultX  = 308
+        DefaultY  = 420
+        Kind      = 'meter'
+    }
+    claude = @{
+        Title     = 'Claude'
+        Accent    = @(217, 119, 87)
+        Width     = 460
+        Height    = 230
+        DefaultX  = 592
+        DefaultY  = 420
+        Kind      = 'meter'
+    }
 }
 
 function Read-QuotaDockSourceConfig {
@@ -270,6 +303,9 @@ $script:DataDefaults = @{
     codex    = Resolve-QuotaDockSourcePath 'codexPath' 'QUOTADOCK_CODEX_DATA' (Get-QuotaDockDataFallback 'codex.json' 'codex.quota.example.json')
     grok     = Resolve-QuotaDockSourcePath 'grokPath' 'QUOTADOCK_GROK_DATA' (Get-QuotaDockDataFallback 'grok.json' 'grok.quota.example.json')
     opencode = Resolve-QuotaDockSourcePath 'opencodePath' 'QUOTADOCK_OPENCODE_DATA' (Get-QuotaDockDataFallback 'opencode_go.json' 'opencode_go.quota.example.json')
+    grokbot  = Resolve-QuotaDockSourcePath 'grokbotPath' 'QUOTADOCK_GROKBOT_DATA' (Join-Path $customDataRoot 'grokbot.json')
+    muse     = Resolve-QuotaDockSourcePath 'musePath' 'QUOTADOCK_MUSE_DATA' (Join-Path $customDataRoot 'muse.json')
+    claude   = Resolve-QuotaDockSourcePath 'claudePath' 'QUOTADOCK_CLAUDE_DATA' (Join-Path $customDataRoot 'claude.json')
 }
 
 function Test-ExplicitQuotaDataSource {
@@ -286,6 +322,9 @@ $script:ExplicitDataSources = @{
     codex    = Test-ExplicitQuotaDataSource 'codexPath' 'QUOTADOCK_CODEX_DATA'
     grok     = Test-ExplicitQuotaDataSource 'grokPath' 'QUOTADOCK_GROK_DATA'
     opencode = Test-ExplicitQuotaDataSource 'opencodePath' 'QUOTADOCK_OPENCODE_DATA'
+    grokbot  = Test-ExplicitQuotaDataSource 'grokbotPath' 'QUOTADOCK_GROKBOT_DATA'
+    muse     = Test-ExplicitQuotaDataSource 'musePath' 'QUOTADOCK_MUSE_DATA'
+    claude   = Test-ExplicitQuotaDataSource 'claudePath' 'QUOTADOCK_CLAUDE_DATA'
 }
 
 function Get-ActiveQuotaDataPath {
@@ -298,7 +337,17 @@ function Get-ActiveQuotaDataPath {
         'codex' { 'codex.json' }
         'grok' { 'grok.json' }
         'opencode' { 'opencode_go.json' }
+        'grokbot' { $null }
+        'muse' { $null }
+        'claude' { $null }
         default { $null }
+    }
+    if (@('grokbot', 'muse', 'claude') -contains $Provider) {
+        $meterPath = Join-Path $customDataRoot ($Provider + '.json')
+        if (Test-Path -LiteralPath $meterPath -PathType Leaf) {
+            return $meterPath
+        }
+        return $configuredPath
     }
     if (-not [string]::IsNullOrWhiteSpace($localName)) {
         $localPath = Join-Path $localDataRoot $localName
@@ -399,7 +448,7 @@ function Import-CustomProviders {
             if ([string]::IsNullOrWhiteSpace($id) -or
                 $id -notmatch '^[a-z0-9][a-z0-9_-]{1,31}$' -or
                 [string]::IsNullOrWhiteSpace($title) -or
-                @('codex', 'grok', 'opencode') -contains $id) {
+                @('codex', 'grok', 'opencode', 'grokbot', 'muse', 'claude') -contains $id) {
                 continue
             }
             $dataPath = [Environment]::ExpandEnvironmentVariables([string](Get-JsonValue $entry 'dataPath')).Trim()
@@ -411,12 +460,22 @@ function Import-CustomProviders {
                 $accent = @(112, 191, 255)
             }
             $brandPath = [Environment]::ExpandEnvironmentVariables([string](Get-JsonValue $entry 'brandPath')).Trim()
+            $widthValue = Get-JsonValue $entry 'width'
+            $heightValue = Get-JsonValue $entry 'height'
+            $cardWidth = 560
+            $cardHeight = 330
+            if ($null -ne $widthValue -and [string]$widthValue -match '^\d+$') {
+                $cardWidth = [Math]::Max(320, [int]$widthValue)
+            }
+            if ($null -ne $heightValue -and [string]$heightValue -match '^\d+$') {
+                $cardHeight = [Math]::Max(180, [int]$heightValue)
+            }
             $profile = @{
                 Title       = $title
                 Description = ([string](Get-JsonValue $entry 'description')).Trim()
                 Accent      = @([int]$accent[0], [int]$accent[1], [int]$accent[2])
-                Width       = 560
-                Height      = 330
+                Width       = $cardWidth
+                Height      = $cardHeight
                 DefaultX    = 24
                 DefaultY    = 170
                 Kind        = 'custom'
@@ -615,6 +674,66 @@ function Get-CodexQuotaRows {
     )
 }
 
+function Get-WindowsProviderModel {
+    param(
+        [string]$Provider,
+        $Data,
+        $Profile
+    )
+    $rows = New-Object System.Collections.ArrayList
+    # Meter cards usually carry one weekly window; custom cards may carry up to three.
+    $maxRows = if ($Profile.Kind -eq 'custom') { 3 } else { 1 }
+    $customWindows = @(Get-JsonValue $Data 'windows') | Select-Object -First $maxRows
+    foreach ($window in @($customWindows)) {
+        $label = [string](Get-JsonValue $window 'label')
+        if ([string]::IsNullOrWhiteSpace($label)) {
+            $label = [string](Get-JsonValue $window 'title') -replace '额度$', ''
+        }
+        if ([string]::IsNullOrWhiteSpace($label)) {
+            $label = '额度'
+        }
+        $percent = Get-JsonValue $window 'remainingPercent'
+        if ($null -eq $percent) {
+            $percent = Get-JsonValue $window 'percent'
+        }
+        $resetText = [string](Get-JsonValue $window 'resetText')
+        if ([string]::IsNullOrWhiteSpace($resetText)) {
+            $resetAt = Get-JsonValue $window 'resetAt'
+            $resetText = if ($null -ne $resetAt) { Format-ResetText $resetAt } else { '重置时间未知' }
+        }
+        if ($null -eq (Get-PercentNumber $percent) -and
+            ($resetText -eq '重置时间未知' -or [string]::IsNullOrWhiteSpace($resetText))) {
+            $resetText = '等待同步'
+        }
+        [void]$rows.Add((New-Row $label (Format-Percent $percent) $resetText))
+    }
+    if ($rows.Count -eq 0) {
+        [void]$rows.Add((New-Row '额度' '--' '等待同步'))
+    }
+    $updatedAt = Get-JsonValue $Data 'updatedAt'
+    $status = [string](Get-JsonValue $Data 'status')
+    if ([string]::IsNullOrWhiteSpace($status)) {
+        $status = Format-UpdatedText $updatedAt
+    }
+    $badge = [string](Get-JsonValue $Data 'badge')
+    if ([string]::IsNullOrWhiteSpace($badge)) {
+        $badge = if ($Profile.Kind -eq 'custom') { '自定义' } else { $Profile.Title }
+    }
+    $syncStatus = [string](Get-JsonValue $Data 'syncStatus')
+    $lastError = [string](Get-JsonValue $Data 'lastError')
+    if ($syncStatus -eq 'error' -and -not [string]::IsNullOrWhiteSpace($lastError)) {
+        $status = '同步失败 · ' + $lastError
+        $badge = '过期'
+    }
+    return [pscustomobject]@{
+        Title  = if ([string]::IsNullOrWhiteSpace([string](Get-JsonValue $Data 'title'))) { $Profile.Title } else { [string](Get-JsonValue $Data 'title') }
+        Badge  = $badge
+        Status = $status
+        Rows   = @($rows.ToArray())
+        Error  = ($rows.Count -eq 0)
+    }
+}
+
 function Get-UiModel {
     param([string]$Provider)
     $data = Read-QuotaData (Get-ActiveQuotaDataPath $Provider)
@@ -629,54 +748,8 @@ function Get-UiModel {
     }
 
     $profile = $script:Profiles[$Provider]
-    if ($null -ne $profile -and $profile.Kind -eq 'custom') {
-        $rows = New-Object System.Collections.ArrayList
-        # The current 330px custom card has room for three readable rows.
-        $customWindows = @(Get-JsonValue $data 'windows') | Select-Object -First 3
-        foreach ($window in @($customWindows)) {
-            $label = [string](Get-JsonValue $window 'label')
-            if ([string]::IsNullOrWhiteSpace($label)) {
-                $label = [string](Get-JsonValue $window 'title') -replace '额度$', ''
-            }
-            if ([string]::IsNullOrWhiteSpace($label)) {
-                $label = '额度'
-            }
-            $percent = Get-JsonValue $window 'remainingPercent'
-            if ($null -eq $percent) {
-                $percent = Get-JsonValue $window 'percent'
-            }
-            $resetText = [string](Get-JsonValue $window 'resetText')
-            if ([string]::IsNullOrWhiteSpace($resetText)) {
-                $resetAt = Get-JsonValue $window 'resetAt'
-                $resetText = if ($null -ne $resetAt) { Format-ResetText $resetAt } else { '重置时间未知' }
-            }
-            if ($null -eq (Get-PercentNumber $percent) -and
-                ($resetText -eq '重置时间未知' -or [string]::IsNullOrWhiteSpace($resetText))) {
-                $resetText = '等待同步'
-            }
-            [void]$rows.Add((New-Row $label (Format-Percent $percent) $resetText))
-        }
-        if ($rows.Count -eq 0) {
-            # Keep an empty custom provider visibly understandable. The card is
-            # registered, but its adapter has not written a quota payload yet.
-            [void]$rows.Add((New-Row '额度' '--' '等待同步'))
-        }
-        $updatedAt = Get-JsonValue $data 'updatedAt'
-        $status = [string](Get-JsonValue $data 'status')
-        if ([string]::IsNullOrWhiteSpace($status)) {
-            $status = Format-UpdatedText $updatedAt
-        }
-        $badge = [string](Get-JsonValue $data 'badge')
-        if ([string]::IsNullOrWhiteSpace($badge)) {
-            $badge = '自定义'
-        }
-        return [pscustomobject]@{
-            Title  = if ([string]::IsNullOrWhiteSpace([string](Get-JsonValue $data 'title'))) { $profile.Title } else { [string](Get-JsonValue $data 'title') }
-            Badge  = $badge
-            Status = $status
-            Rows   = @($rows.ToArray())
-            Error  = ($rows.Count -eq 0)
-        }
+    if ($null -ne $profile -and ($profile.Kind -eq 'custom' -or $profile.Kind -eq 'meter')) {
+        return Get-WindowsProviderModel -Provider $Provider -Data $data -Profile $profile
     }
 
     if ($Provider -eq 'codex') {
@@ -1184,7 +1257,7 @@ function Draw-Card {
     Draw-Text $Graphics (Get-SafeText $model.Badge 16) ($X + 16) ($Y + 54) ($W - 32) 28 $fontMeta $muted
 
     $rows = @($model.Rows)
-    $isMultiRow = ($Card.Provider -in @('codex', 'opencode') -or $Card.Profile.Kind -eq 'custom')
+    $isMultiRow = ($Card.Provider -in @('codex', 'opencode') -or ($Card.Profile.Kind -eq 'custom' -and @($model.Rows).Count -gt 1))
     if ($isMultiRow) {
         $rowY = $Y + 94
         foreach ($row in $rows) {

@@ -1,0 +1,18 @@
+{
+  "title": "Grok Bot",
+  "badge": "SuperGrok",
+  "status": "已同步 12:00",
+  "updatedAt": "2026-01-01T12:00:00+08:00",
+  "lastSuccessAt": "2026-01-01T12:00:00+08:00",
+  "lastAttemptAt": "2026-01-01T12:00:05+08:00",
+  "syncStatus": "success",
+  "lastError": null,
+  "source": "example",
+  "windows": [
+    {
+      "label": "周额度",
+      "remainingPercent": 72,
+      "resetText": "示例：周日 12:00"
+    }
+  ]
+}

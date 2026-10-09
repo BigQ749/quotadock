@@ -83,9 +83,21 @@ $providers = [ordered]@{
         Title = 'Grok'
         Description = '周额度 · 独立浮窗'
     }
+    grokbot = [pscustomobject]@{
+        Title = 'Grok Bot'
+        Description = '周额度 · 本地同步'
+    }
+    muse = [pscustomobject]@{
+        Title = 'Muse'
+        Description = '周额度 · 本地同步'
+    }
+    claude = [pscustomobject]@{
+        Title = 'Claude'
+        Description = '周额度 · 可选同步'
+    }
 }
 
-$builtInProviderIds = @('codex', 'opencode', 'grok')
+$builtInProviderIds = @('codex', 'opencode', 'grok', 'grokbot', 'muse', 'claude')
 
 function Import-CustomProviders {
     if (-not (Test-Path -LiteralPath $customConfigPath)) {
@@ -1769,6 +1781,9 @@ foreach ($provider in $providers.Keys) {
         'codex' { 'chatgpt-mark' }
         'opencode' { 'opencode-mark' }
         'grok' { 'grok-mark' }
+        'grokbot' { 'grokbot-mark' }
+        'muse' { 'muse-mark' }
+        'claude' { 'claude-mark' }
         default { $profile.BrandPath }
     }
     $brandBox = $null

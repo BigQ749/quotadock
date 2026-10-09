@@ -1,6 +1,6 @@
 # QuotaDock AI-readable project index
 
-QuotaDock is a local-first quota dashboard with a PowerShell 7+ + WinForms Windows app and a native AppKit + SwiftUI macOS preview. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, and custom providers.
+QuotaDock is a local-first quota dashboard with a PowerShell 7+ + WinForms Windows app and a native AppKit + SwiftUI macOS preview. It manages separate and merged floating cards for Codex, Grok, OpenCode Go, Grok Bot, Muse, Claude, and custom providers.
 
 ## Core facts
 
@@ -31,6 +31,7 @@ Add a provider by registering a local JSON source in `quota_sources.json` or thr
 - `README.md`
 - `docs/architecture.md`
 - `docs/provider-adapter.md`
+- `docs/providers-grokbot-muse-claude.md`
 - `docs/deployment-guide.md`
 - `docs/troubleshooting.md`
 - `docs/release.md`

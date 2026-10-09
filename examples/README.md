@@ -14,3 +14,11 @@ Windows 版默认内置 Codex 同步器：它读取当前 Windows 用户 `%USERP
 - `QUOTADOCK_PYTHONW`
 
 QuotaDock 只读取本地 JSON，不会因为填写了路径就自动获得第三方账号权限。
+
+内置计量卡示例（虚构数据，不会在实时桌面回退展示）：
+
+- `grokbot.quota.example.json`
+- `muse.quota.example.json`
+- `claude.quota.example.json`
+
+运行时默认读取 `%LOCALAPPDATA%\QuotaDock\custom-data\{id}.json`。也可通过环境变量覆盖：`QUOTADOCK_GROKBOT_DATA`、`QUOTADOCK_MUSE_DATA`、`QUOTADOCK_CLAUDE_DATA`。

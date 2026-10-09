@@ -9,3 +9,9 @@
 - OpenCode Go：<https://opencode.ai/favicon-96x96-v3.png>
 
 资源核对并缓存日期：2026-08-11。品牌名称和标识仍归各自权利人所有；本项目仅用于识别额度来源。
+
+- Grok Bot：本地整理的应用标识位图（`grokbot-mark.png`）。
+- Muse：本地整理的应用标识位图（`muse-mark.png`）。
+- Claude：本地整理的应用标识位图（`claude-mark.png`）。
+
+以上三类标识仅用于 QuotaDock 本地展示；商标归属各自权利人。
