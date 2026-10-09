@@ -261,7 +261,9 @@ function Start-LocalInstaller {
         return
     }
     try {
-        $pwsh = (Get-Command pwsh.exe -ErrorAction Stop).Source
+        $pathResolver = Join-Path $InstallRoot 'quota_dock_paths.ps1'
+        if (Test-Path -LiteralPath $pathResolver -PathType Leaf) { . $pathResolver }
+        $pwsh = Resolve-QuotaDockPowerShell
         $arguments = @(
             '-NoProfile'
             '-ExecutionPolicy'

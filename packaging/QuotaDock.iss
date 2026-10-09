@@ -41,11 +41,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 chinesesimplified.AutoStartTask=登录 Windows 时启动 QuotaDock
 chinesesimplified.StartupOptions=启动选项：
 chinesesimplified.LaunchAfterInstall=安装完成后启动 QuotaDock
-chinesesimplified.PowerShellMissing=未找到 PowerShell 7 或更高版本。QuotaDock 需要 PowerShell 7+ 才能运行。请先从 https://aka.ms/powershell-release?tag=stable 安装，然后再启动 QuotaDock。
+chinesesimplified.PowerShellMissing=未检测到 PowerShell 7（可选）。QuotaDock 已兼容 Windows 自带的 PowerShell 5.1；若仍想安装 PowerShell 7，可打开 https://aka.ms/powershell-release?tag=stable 。
 english.AutoStartTask=Start QuotaDock when I sign in to Windows
 english.StartupOptions=Startup options:
 english.LaunchAfterInstall=Launch QuotaDock after installation
-english.PowerShellMissing=PowerShell 7 or newer was not found. QuotaDock needs PowerShell 7+ to run. You can install it from https://aka.ms/powershell-release?tag=stable, then launch QuotaDock again.
+english.PowerShellMissing=PowerShell 7 was not detected (optional). QuotaDock works with Windows PowerShell 5.1; you may still install PowerShell 7 from https://aka.ms/powershell-release?tag=stable .
 
 [Tasks]
 Name: "autostart"; Description: "{cm:AutoStartTask}"; GroupDescription: "{cm:StartupOptions}"; Flags: unchecked
@@ -94,10 +94,26 @@ begin
   end;
 end;
 
+function GetWindowsPowerShellPath(): String;
+var
+  Candidate: String;
+begin
+  Result := '';
+  Candidate := ExpandConstant('{win}\System32\WindowsPowerShell\v1.0\powershell.exe');
+  if FileExists(Candidate) then begin
+    Result := Candidate;
+    exit;
+  end;
+  Candidate := ExpandConstant('{win}\SysWOW64\WindowsPowerShell\v1.0\powershell.exe');
+  if FileExists(Candidate) then begin
+    Result := Candidate;
+  end;
+end;
+
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  if GetPowerShell7Path() = '' then begin
+  if (GetPowerShell7Path() = '') and (GetWindowsPowerShellPath() = '') then begin
     MsgBox(CustomMessage('PowerShellMissing'), mbInformation, MB_OK);
   end;
 end;

@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $manifest = Get-Content -LiteralPath (Join-Path $root 'update-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $packagePath = Join-Path $root ('dist\QuotaDock-v' + [string]$manifest.version + '.zip')
@@ -8,7 +8,7 @@ try {
     Expand-Archive -LiteralPath $packagePath -DestinationPath $targetRoot -Force
     Set-Content -LiteralPath (Join-Path $targetRoot 'VERSION') -Value '0.1.2' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $targetRoot 'opencode_go_live.json') -Value '{"smoke":"preserve"}' -Encoding UTF8
-    $output = & (Get-Command pwsh.exe).Source -NoProfile -ExecutionPolicy Bypass -File (Join-Path $targetRoot 'install_quota_update.ps1') `
+    $output = & $(if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { (Get-Command pwsh.exe).Source } else { (Get-Command powershell.exe).Source }) -NoProfile -ExecutionPolicy Bypass -File (Join-Path $targetRoot 'install_quota_update.ps1') `
         -PackagePath $packagePath `
         -ExpectedSha256 $hash `
         -TargetVersion ([string]$manifest.version) `

@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $hostPath = Join-Path $root 'quota_fusion_host.ps1'
 $source = Get-Content -LiteralPath $hostPath -Raw -Encoding UTF8

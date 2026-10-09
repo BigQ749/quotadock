@@ -1,15 +1,17 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $versionText = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw -Encoding UTF8).Trim()
 $localPackagePath = Join-Path $root ('dist\QuotaDock-v' + $versionText + '.zip')
-$powershellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($null -eq $powershellCommand -or [string]::IsNullOrWhiteSpace($powershellCommand.Source)) {
-    throw 'SELFTEST_ENV_FAIL: PowerShell 7+（pwsh.exe）未找到。'
+$pathResolver = Join-Path $root 'quota_dock_paths.ps1'
+if (-not (Test-Path -LiteralPath $pathResolver -PathType Leaf)) {
+    throw 'SELFTEST_ENV_FAIL: 缺少 quota_dock_paths.ps1'
 }
-$powershell = $powershellCommand.Source
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    throw ('SELFTEST_ENV_FAIL: 必须使用 PowerShell 7+，当前为 ' + $PSVersionTable.PSVersion)
+. $pathResolver
+$powershell = Resolve-QuotaDockPowerShell
+if ($PSVersionTable.PSVersion.Major -lt 5 -or ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -lt 1)) {
+    throw ('SELFTEST_ENV_FAIL: 需要 Windows PowerShell 5.1 或更高版本，当前为 ' + $PSVersionTable.PSVersion)
 }
+Write-Output ('SELFTEST_HOST powershell=' + $powershell + ' version=' + $PSVersionTable.PSVersion)
 
 $privacyPatterns = @(
     'Fe26\.[A-Za-z0-9._-]{20,}',
@@ -56,11 +58,17 @@ $centerSource = Get-Content -LiteralPath (Join-Path $root 'quota_center.ps1') -R
 $hostSource = Get-Content -LiteralPath (Join-Path $root 'quota_fusion_host.ps1') -Raw -Encoding UTF8
 $pathSource = Get-Content -LiteralPath (Join-Path $root 'quota_dock_paths.ps1') -Raw -Encoding UTF8
 $launcherSource = (Get-ChildItem -LiteralPath $root -Filter 'launch_*.vbs' -File | Get-Content -Raw) -join "`n"
-if ($centerSource -notmatch 'Resolve-QuotaDockPowerShell' -or $centerSource -notmatch 'pwsh\.exe') {
-    throw 'REGRESSION_FAIL: QuotaDock must resolve and launch PowerShell 7+ via pwsh.exe'
+if ($centerSource -notmatch 'Resolve-QuotaDockPowerShell' -or $pathSource -notmatch 'Resolve-QuotaDockPowerShell') {
+    throw 'REGRESSION_FAIL: QuotaDock must share Resolve-QuotaDockPowerShell (prefer pwsh, fallback Windows PowerShell 5.1)'
 }
-if ($launcherSource -match 'WindowsPowerShell|powershell\.exe' -or $launcherSource -notmatch 'PowerShell\\7\\pwsh\.exe') {
-    throw 'REGRESSION_FAIL: VBS launchers must use PowerShell 7+ and must not default to Windows PowerShell 5.1'
+if ($centerSource -notmatch 'WindowsPowerShell\\v1\.0\\powershell\.exe' -and $pathSource -notmatch 'WindowsPowerShell\\v1\.0\\powershell\.exe') {
+    throw 'REGRESSION_FAIL: PowerShell resolver must fall back to Windows PowerShell 5.1 powershell.exe'
+}
+if ($launcherSource -notmatch 'PowerShell\\7\\pwsh\.exe' -or $launcherSource -notmatch 'WindowsPowerShell\\v1\.0\\powershell\.exe') {
+    throw 'REGRESSION_FAIL: VBS launchers must prefer pwsh and fall back to Windows PowerShell 5.1'
+}
+if ($launcherSource -notmatch 'aka\.ms/powershell-release') {
+    throw 'REGRESSION_FAIL: VBS launchers must offer aka.ms PowerShell download when no host is found'
 }
 if ($centerSource -match 'ShowWithoutActivation') {
     throw 'REGRESSION_FAIL: center must not assign unsupported ShowWithoutActivation'

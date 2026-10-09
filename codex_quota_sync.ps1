@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputPath = '',
     [int]$IntervalSeconds = 60,
     [switch]$Once,
