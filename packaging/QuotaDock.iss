@@ -32,9 +32,9 @@ CloseApplications=yes
 RestartApplications=no
 
 [Languages]
-; ChineseSimplified.isl ships with Inno Setup 6 (compiler:Languages). CI/choco installs include it.
-; If a minimal local ISCC tree lacks the file, remove the chinesesimplified line and rebuild with English only.
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; ChineseSimplified.isl is vendored in packaging/ (Unofficial translation from jrsoftware/issrc).
+; Keeps CI/choco builds working when compiler:Languages lacks the file.
+Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]

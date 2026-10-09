@@ -35,7 +35,7 @@ Get-Content .\SHA256SUMS.txt
 
 ## 安装向导会做什么
 
-- 显示欢迎页和 MIT 许可证确认页。v0.2.5 起优先使用简体中文界面（`ChineseSimplified.isl`）；若本地 Inno Setup 缺少该语言包，构建会失败——可临时只保留 `english` 语言行后重建，CI 的完整 Inno 安装包含该文件。
+- 显示欢迎页和 MIT 许可证确认页。v0.2.5 起优先使用简体中文界面；`packaging/ChineseSimplified.isl` 已随仓库提供（不依赖 CI 机器上的 Inno `Languages` 目录）。仍保留英文作为第二语言。
 - 允许选择安装盘和目录，默认安装到当前用户的 `%LOCALAPPDATA%\Programs\QuotaDock`，不要求管理员权限。
 - 创建开始菜单和桌面快捷方式。
 - 可选创建“登录 Windows 时自动启动”的用户启动项；默认不勾选。
