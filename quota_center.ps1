@@ -43,6 +43,8 @@ $customConfigPath = Join-Path $stateRoot 'custom_providers.json'
 $customDataRoot = Join-Path $stateRoot 'custom-data'
 $hiddenProviderPath = Join-Path $stateRoot 'quota_center_hidden.json'
 $centerErrorLog = Join-Path $env:TEMP 'quota-center-error.log'
+$onboardingSeenPath = Join-Path $stateRoot 'onboarding_seen.json'
+$quotaDockDocsRoot = 'https://github.com/BigQ749/quotadock'
 
 function Resolve-QuotaDockPowerShell {
     $candidates = @()
@@ -85,15 +87,15 @@ $providers = [ordered]@{
     }
     grokbot = [pscustomobject]@{
         Title = 'Grok Bot'
-        Description = '周额度 · 本地同步'
+        Description = '周额度 · 可选同步器'
     }
     muse = [pscustomobject]@{
         Title = 'Muse'
-        Description = '周额度 · 本地同步'
+        Description = '周额度 · 可选同步器'
     }
     claude = [pscustomobject]@{
         Title = 'Claude'
-        Description = '周额度 · 可选同步'
+        Description = '周额度 · 手动 JSON / 预览'
     }
 }
 
@@ -766,6 +768,64 @@ function Sync-HostRuntimeState {
     Sync-TrayItems
 }
 
+function Open-QuotaDockUrl {
+    param([string]$Url)
+    if ([string]::IsNullOrWhiteSpace($Url)) { return }
+    try {
+        Start-Process $Url | Out-Null
+    }
+    catch {
+        Write-CenterError 'open-url' $_
+        Set-Status ('无法打开链接：' + $_.Exception.Message)
+    }
+}
+
+function Open-QuotaDockDoc {
+    param([string]$RelativePath)
+    $normalized = ($RelativePath -replace '/', '\').TrimStart('\')
+    $local = Join-Path $root $normalized
+    if (Test-Path -LiteralPath $local -PathType Leaf) {
+        Open-QuotaDockUrl $local
+        return
+    }
+    $web = $quotaDockDocsRoot + '/blob/main/' + ($normalized -replace '\\', '/')
+    Open-QuotaDockUrl $web
+}
+
+function Get-QuotaDockAppVersion {
+    $versionPath = Join-Path $root 'VERSION'
+    if (Test-Path -LiteralPath $versionPath) {
+        return (Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim()
+    }
+    return '未知'
+}
+
+function Test-OnboardingSeen {
+    if (-not (Test-Path -LiteralPath $onboardingSeenPath)) {
+        return $false
+    }
+    try {
+        $data = Get-Content -LiteralPath $onboardingSeenPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        return [bool](Get-JsonValue $data 'seen')
+    }
+    catch {
+        return $false
+    }
+}
+
+function Save-OnboardingSeen {
+    if (-not (Test-Path -LiteralPath $stateRoot)) {
+        New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
+    }
+    $payload = [ordered]@{
+        seen      = $true
+        seenAt    = [datetimeoffset]::Now.ToString('o')
+        version   = Get-QuotaDockAppVersion
+    }
+    $json = ($payload | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
+    [System.IO.File]::WriteAllText($onboardingSeenPath, $json, (New-Object System.Text.UTF8Encoding($false)))
+}
+
 function Show-UpdateResult {
     if (-not (Test-Path -LiteralPath $script:UpdateResultPath)) {
         return $false
@@ -787,6 +847,8 @@ function Show-UpdateResult {
         $canInstall = $hasUpdate -and
             -not [string]::IsNullOrWhiteSpace($downloadUrl) -and
             $expectedSha256 -match '^[A-Fa-f0-9]{64}$'
+        $canOpenNotes = -not [string]::IsNullOrWhiteSpace($releaseUrl)
+
         if (-not [string]::IsNullOrWhiteSpace($checkError)) {
             if ($checkError -match '403|rate.?limit|限流|API.*quota') {
                 $title = '暂时无法检查 QuotaDock 更新'
@@ -798,26 +860,62 @@ function Show-UpdateResult {
                 $body = '当前版本：' + $current + [Environment]::NewLine + [Environment]::NewLine + '原因：' + $checkError
                 $icon = [System.Windows.Forms.MessageBoxIcon]::Warning
             }
+            if ($canOpenNotes) {
+                $body += [Environment]::NewLine + [Environment]::NewLine + '点击“是”可打开发布页查看说明。'
+                $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::YesNo, $icon)
+                if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+                    Open-QuotaDockUrl $releaseUrl
+                }
+            }
+            else {
+                [void][System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::OK, $icon)
+            }
+            Set-Status '更新检查已完成'
+            return $true
         }
-        elseif ($hasUpdate) {
+
+        if ($hasUpdate) {
             $title = '发现 QuotaDock 新版本'
             if ($canInstall) {
-                $body = '当前版本：' + $current + [Environment]::NewLine + '最新版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '点击“是”直接下载并校验更新包。QuotaDock 会关闭当前窗口、替换本地程序文件并自动重启；不会上传本地额度数据。'
+                $body = '当前版本：' + $current + [Environment]::NewLine + '最新版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '“是”=下载并校验更新包（关闭窗口、替换文件并自动重启，不上传本地额度）。' + [Environment]::NewLine + '“否”=打开发布说明（release notes）。' + [Environment]::NewLine + '“取消”=稍后再说。'
+                $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::YesNoCancel, [System.Windows.Forms.MessageBoxIcon]::Information)
+                if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+                    return (Start-QuotaDockLocalUpdate $downloadUrl $expectedSha256 $latest)
+                }
+                if ($choice -eq [System.Windows.Forms.DialogResult]::No -and $canOpenNotes) {
+                    Open-QuotaDockUrl $releaseUrl
+                    Set-Status '已打开更新说明'
+                    return $true
+                }
             }
             else {
                 $body = '当前版本：' + $current + [Environment]::NewLine + '检测到版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '远端没有可验证的更新包。为保护本地程序，本次不会安装。'
+                if ($canOpenNotes) {
+                    $body += [Environment]::NewLine + [Environment]::NewLine + '点击“是”打开发布说明。'
+                    $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+                        Open-QuotaDockUrl $releaseUrl
+                    }
+                }
+                else {
+                    [void][System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                }
             }
-            $icon = [System.Windows.Forms.MessageBoxIcon]::Information
+            Set-Status '更新检查已完成'
+            return $true
+        }
+
+        $title = 'QuotaDock 已是最新版'
+        $body = '当前版本：' + $current + [Environment]::NewLine + '已检查版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '目前不需要更新。'
+        if ($canOpenNotes) {
+            $body += [Environment]::NewLine + [Environment]::NewLine + '点击“是”可打开当前版本发布说明。'
+            $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Information)
+            if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+                Open-QuotaDockUrl $releaseUrl
+            }
         }
         else {
-            $title = 'QuotaDock 已是最新版'
-            $body = '当前版本：' + $current + [Environment]::NewLine + '已检查版本：' + $latest + [Environment]::NewLine + [Environment]::NewLine + '目前不需要更新。'
-            $icon = [System.Windows.Forms.MessageBoxIcon]::Information
-        }
-        $buttons = if ($canInstall) { [System.Windows.Forms.MessageBoxButtons]::YesNo } else { [System.Windows.Forms.MessageBoxButtons]::OK }
-        $choice = [System.Windows.Forms.MessageBox]::Show($form, $body, $title, $buttons, $icon)
-        if ($canInstall -and $choice -eq [System.Windows.Forms.DialogResult]::Yes) {
-            return (Start-QuotaDockLocalUpdate $downloadUrl $expectedSha256 $latest)
+            [void][System.Windows.Forms.MessageBox]::Show($form, $body, $title, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
         }
         Set-Status '更新检查已完成'
         return $true
@@ -1639,14 +1737,23 @@ $success = [System.Drawing.Color]::FromArgb(115, 218, 164)
 
 # Keep native DPI rendering, but give the typography and provider cards a
 # clearly readable desktop scale instead of treating the panel like a chip.
+# Compact card metrics + AutoScroll keep 6+ built-ins usable on ~1080p work areas.
 $uiWidth = 860
 $uiMargin = 48
 $cardWidth = $uiWidth - ($uiMargin * 2)
-$cardHeight = 132
-$cardGap = 24
+$cardHeight = 112
+$cardGap = 14
 $bottomButtonWidth = 184
-$futureY = 176 + ($providers.Count * ($cardHeight + $cardGap))
-$uiHeight = [Math]::Max(800, $futureY + 64 + 86)
+$headerHeight = 156
+$footerHeight = 78
+$listTopPadding = 16
+$futureHeight = 56
+$contentListHeight = $listTopPadding + ($providers.Count * ($cardHeight + $cardGap)) + $futureHeight + 20
+$workArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+$maxFormHeight = [Math]::Max(560, $workArea.Height - 48)
+$desiredHeight = $headerHeight + $contentListHeight + $footerHeight
+$uiHeight = [Math]::Min($desiredHeight, $maxFormHeight)
+$needsScroll = $desiredHeight -gt $maxFormHeight
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'QuotaDock'
@@ -1656,10 +1763,9 @@ $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
 # a second time and can clip labels.
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::None
 $form.ClientSize = New-Object System.Drawing.Size($uiWidth, $uiHeight)
-$form.MinimumSize = $form.Size
-$form.MaximumSize = $form.Size
+$form.MinimumSize = New-Object System.Drawing.Size($uiWidth, [Math]::Min(560, $uiHeight))
+$form.MaximumSize = New-Object System.Drawing.Size($uiWidth, $maxFormHeight)
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual
-$workArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
 $form.Location = New-Object System.Drawing.Point(
     ($workArea.Left + 24),
     ($workArea.Bottom - $form.Height - 24)
@@ -1763,10 +1869,23 @@ $divider.Size = New-Object System.Drawing.Size($cardWidth, 1)
 $divider.BackColor = $border
 $chrome.Controls.Add($divider)
 
+$scrollHost = New-Object System.Windows.Forms.Panel
+$scrollHost.Location = New-Object System.Drawing.Point(0, $headerHeight)
+$scrollHost.Size = New-Object System.Drawing.Size($uiWidth, ($uiHeight - $headerHeight - $footerHeight))
+$scrollHost.BackColor = $background
+$scrollHost.AutoScroll = $true
+$chrome.Controls.Add($scrollHost)
+
+$providerList = New-Object System.Windows.Forms.Panel
+$providerList.Location = New-Object System.Drawing.Point(0, 0)
+$providerList.Size = New-Object System.Drawing.Size(($uiWidth - 24), $contentListHeight)
+$providerList.BackColor = $background
+$scrollHost.Controls.Add($providerList)
+
 $index = 0
 foreach ($provider in $providers.Keys) {
     $profile = $providers[$provider]
-    $y = 176 + ($index * ($cardHeight + $cardGap))
+    $y = $listTopPadding + ($index * ($cardHeight + $cardGap))
 
     $card = New-Object System.Windows.Forms.Panel
     $card.Tag = $provider
@@ -1774,8 +1893,8 @@ foreach ($provider in $providers.Keys) {
     $card.Size = New-Object System.Drawing.Size($cardWidth, $cardHeight)
     $card.BackColor = $surface
     $card.Cursor = [System.Windows.Forms.Cursors]::Arrow
-    $chrome.Controls.Add($card)
-    Set-RoundedRegion $card 20
+    $providerList.Controls.Add($card)
+    Set-RoundedRegion $card 18
 
     $brandName = switch ($provider) {
         'codex' { 'chatgpt-mark' }
@@ -1790,8 +1909,8 @@ foreach ($provider in $providers.Keys) {
     $brand = Load-BrandImage $brandName
     if ($null -ne $brand) {
         $brandBox = New-Object System.Windows.Forms.PictureBox
-        $brandBox.Location = New-Object System.Drawing.Point(22, 32)
-        $brandBox.Size = New-Object System.Drawing.Size(68, 68)
+        $brandBox.Location = New-Object System.Drawing.Point(22, 22)
+        $brandBox.Size = New-Object System.Drawing.Size(60, 60)
         $brandBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
         $brandBox.BackColor = [System.Drawing.Color]::Transparent
         $brandBox.Image = $brand
@@ -1813,14 +1932,14 @@ foreach ($provider in $providers.Keys) {
     $script:ProviderChecks[$provider] = $check
     $card.Controls.Add($check)
 
-    $nameLabel = Add-TextLabel $profile.Title (New-Object System.Drawing.Point(116, 22)) (New-Object System.Drawing.Size(380, 38)) (New-UiFont 'Microsoft YaHei UI' 28 ([System.Drawing.FontStyle]::Bold)) $foreground $card
-    $descriptionLabel = Add-TextLabel $profile.Description (New-Object System.Drawing.Point(116, 70)) (New-Object System.Drawing.Size(390, 30)) (New-UiFont 'Microsoft YaHei UI' 18) $muted $card
+    $nameLabel = Add-TextLabel $profile.Title (New-Object System.Drawing.Point(104, 16)) (New-Object System.Drawing.Size(360, 34)) (New-UiFont 'Microsoft YaHei UI' 26 ([System.Drawing.FontStyle]::Bold)) $foreground $card
+    $descriptionLabel = Add-TextLabel $profile.Description (New-Object System.Drawing.Point(104, 56)) (New-Object System.Drawing.Size(360, 28)) (New-UiFont 'Microsoft YaHei UI' 16) $muted $card
     $statusText = Get-ProviderRuntimeCaption $provider
     $statusColor = if (Test-ProviderActuallyOpen $provider) { $accent } else { $subtle }
-    $statusLabel = Add-TextLabel $statusText (New-Object System.Drawing.Point(514, 76)) (New-Object System.Drawing.Size(154, 26)) (New-UiFont 'Microsoft YaHei UI' 15) $statusColor $card
+    $statusLabel = Add-TextLabel $statusText (New-Object System.Drawing.Point(480, 58)) (New-Object System.Drawing.Size(160, 24)) (New-UiFont 'Microsoft YaHei UI' 14) $statusColor $card
     $script:ProviderStatusLabels[$provider] = $statusLabel
 
-    $toggle = New-ProviderToggle $provider $card (New-Object System.Drawing.Point(($cardWidth - 86), 48)) ([bool]$check.Checked)
+    $toggle = New-ProviderToggle $provider $card (New-Object System.Drawing.Point(($cardWidth - 86), 36)) ([bool]$check.Checked)
     $script:ProviderToggles[$provider] = $toggle
     $card.BackColor = Get-ProviderCardColor $provider $false
     Add-ProviderContextHandler $card $provider
@@ -1828,6 +1947,32 @@ foreach ($provider in $providers.Keys) {
     Add-ProviderContextHandler $descriptionLabel $provider
     Add-ProviderContextHandler $brandBox $provider
     Add-ProviderContextHandler $toggle $provider
+
+    if (@('grokbot', 'muse', 'claude') -contains $provider) {
+        $ctaText = if ($provider -eq 'claude') { '手动 JSON 说明 →' } else { '同步器说明 →' }
+        $cta = New-Object System.Windows.Forms.LinkLabel
+        $cta.Text = $ctaText
+        $cta.Tag = $provider
+        $cta.Location = New-Object System.Drawing.Point(104, 84)
+        $cta.Size = New-Object System.Drawing.Size(220, 22)
+        $cta.Font = New-UiFont 'Microsoft YaHei UI' 13
+        $cta.LinkColor = $accent
+        $cta.ActiveLinkColor = $foreground
+        $cta.VisitedLinkColor = $accent
+        $cta.BackColor = [System.Drawing.Color]::Transparent
+        $cta.LinkBehavior = [System.Windows.Forms.LinkBehavior]::HoverUnderline
+        $cta.Add_LinkClicked({
+            param($sender, $eventArgs)
+            $id = [string]$sender.Tag
+            if ($id -eq 'claude') {
+                Open-QuotaDockDoc 'docs\providers-grokbot-muse-claude.md'
+            }
+            else {
+                Open-QuotaDockDoc ('adapters\' + $id + '\README.md')
+            }
+        }.GetNewClosure())
+        $card.Controls.Add($cta)
+    }
 
     $card.Add_MouseEnter({
         param($sender, $eventArgs)
@@ -1860,16 +2005,17 @@ foreach ($provider in $providers.Keys) {
     $index++
 }
 
+$futureY = $listTopPadding + ($providers.Count * ($cardHeight + $cardGap))
 $future = New-Object System.Windows.Forms.Button
 $future.Text = '+  添加其他平台'
 $future.Location = New-Object System.Drawing.Point($uiMargin, $futureY)
-$future.Size = New-Object System.Drawing.Size($cardWidth, 64)
+$future.Size = New-Object System.Drawing.Size($cardWidth, $futureHeight)
 $future.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $future.FlatAppearance.BorderColor = $border
 $future.FlatAppearance.MouseOverBackColor = $surfaceHover
 $future.BackColor = $surface
 $future.ForeColor = $foreground
-$future.Font = New-UiFont 'Microsoft YaHei UI' 20 ([System.Drawing.FontStyle]::Bold)
+$future.Font = New-UiFont 'Microsoft YaHei UI' 18 ([System.Drawing.FontStyle]::Bold)
 $future.UseCompatibleTextRendering = $false
 $future.Cursor = [System.Windows.Forms.Cursors]::Arrow
 $future.Enabled = $true
@@ -1882,12 +2028,12 @@ $future.Add_Click({
         Set-Status ('添加平台失败：' + $_.Exception.Message)
     }
 })
-$chrome.Controls.Add($future)
-Set-RoundedRegion $future 16
+$providerList.Controls.Add($future)
+Set-RoundedRegion $future 14
 
 $script:StatusLabel = New-Object System.Windows.Forms.Label
-$script:StatusLabel.Text = '选择已自动保存'
-$script:StatusLabel.Location = New-Object System.Drawing.Point(52, ($uiHeight - 56))
+$script:StatusLabel.Text = if ($needsScroll) { '列表可滚动 · 选择已自动保存' } else { '选择已自动保存' }
+$script:StatusLabel.Location = New-Object System.Drawing.Point(52, ($uiHeight - 52))
 $script:StatusLabel.Size = New-Object System.Drawing.Size(420, 34)
 $script:StatusLabel.Font = New-UiFont 'Microsoft YaHei UI' 18
 $script:StatusLabel.ForeColor = $success
@@ -1897,8 +2043,8 @@ $chrome.Controls.Add($script:StatusLabel)
 
 $trayButton = New-Object System.Windows.Forms.Button
 $trayButton.Text = '隐藏到托盘'
-$trayButton.Location = New-Object System.Drawing.Point(($uiWidth - $uiMargin - $bottomButtonWidth), ($uiHeight - 62))
-$trayButton.Size = New-Object System.Drawing.Size($bottomButtonWidth, 54)
+$trayButton.Location = New-Object System.Drawing.Point(($uiWidth - $uiMargin - $bottomButtonWidth), ($uiHeight - 60))
+$trayButton.Size = New-Object System.Drawing.Size($bottomButtonWidth, 50)
 $trayButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $trayButton.FlatAppearance.BorderColor = $border
 $trayButton.FlatAppearance.MouseOverBackColor = $surfaceHover
@@ -1910,6 +2056,67 @@ $trayButton.Cursor = [System.Windows.Forms.Cursors]::Arrow
 $trayButton.Add_Click({ Hide-Center })
 $chrome.Controls.Add($trayButton)
 Set-RoundedRegion $trayButton 14
+
+function Show-OnboardingOverlay {
+    if (Test-OnboardingSeen) { return }
+    $overlay = New-Object System.Windows.Forms.Panel
+    $overlay.Name = 'OnboardingOverlay'
+    $overlay.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $overlay.BackColor = [System.Drawing.Color]::FromArgb(230, 12, 14, 18)
+    $chrome.Controls.Add($overlay)
+    $overlay.BringToFront()
+
+    $card = New-Object System.Windows.Forms.Panel
+    $card.Size = New-Object System.Drawing.Size(640, 420)
+    $card.Location = New-Object System.Drawing.Point([int](($uiWidth - 640) / 2), [int](($uiHeight - 420) / 2))
+    $card.BackColor = $surfaceRaised
+    $overlay.Controls.Add($card)
+    Set-RoundedRegion $card 22
+
+    $h = Add-TextLabel '欢迎使用 QuotaDock' (New-Object System.Drawing.Point(36, 28)) (New-Object System.Drawing.Size(560, 40)) (New-UiFont 'Microsoft YaHei UI' 28 ([System.Drawing.FontStyle]::Bold)) $foreground $card
+    $s1 = Add-TextLabel '① 选平台 — 在管理中心勾选要显示的额度浮窗。' (New-Object System.Drawing.Point(36, 90)) (New-Object System.Drawing.Size(560, 36)) (New-UiFont 'Microsoft YaHei UI' 18) $foreground $card
+    $s2 = Add-TextLabel '② 接同步器 — 用适配器或自建脚本把额度写入本地 JSON。' (New-Object System.Drawing.Point(36, 136)) (New-Object System.Drawing.Size(560, 36)) (New-UiFont 'Microsoft YaHei UI' 18) $foreground $card
+    $s3 = Add-TextLabel '③ 浮窗藏边 — 拖到左/右/上边缘可自动藏边，下边不触发。' (New-Object System.Drawing.Point(36, 182)) (New-Object System.Drawing.Size(560, 36)) (New-UiFont 'Microsoft YaHei UI' 18) $foreground $card
+
+    $docLink = New-Object System.Windows.Forms.LinkLabel
+    $docLink.Text = '打开新手部署指南'
+    $docLink.Location = New-Object System.Drawing.Point(36, 240)
+    $docLink.Size = New-Object System.Drawing.Size(240, 28)
+    $docLink.Font = New-UiFont 'Microsoft YaHei UI' 16
+    $docLink.LinkColor = $accent
+    $docLink.ActiveLinkColor = $foreground
+    $docLink.BackColor = [System.Drawing.Color]::Transparent
+    $docLink.Add_LinkClicked({ Open-QuotaDockDoc 'docs\deployment-guide.md' })
+    $card.Controls.Add($docLink)
+
+    $adapterLink = New-Object System.Windows.Forms.LinkLabel
+    $adapterLink.Text = '查看适配器说明（Grok Bot / Muse / Claude）'
+    $adapterLink.Location = New-Object System.Drawing.Point(36, 276)
+    $adapterLink.Size = New-Object System.Drawing.Size(420, 28)
+    $adapterLink.Font = New-UiFont 'Microsoft YaHei UI' 16
+    $adapterLink.LinkColor = $accent
+    $adapterLink.ActiveLinkColor = $foreground
+    $adapterLink.BackColor = [System.Drawing.Color]::Transparent
+    $adapterLink.Add_LinkClicked({ Open-QuotaDockDoc 'docs\providers-grokbot-muse-claude.md' })
+    $card.Controls.Add($adapterLink)
+
+    $startBtn = New-Object System.Windows.Forms.Button
+    $startBtn.Text = '开始使用'
+    $startBtn.Location = New-Object System.Drawing.Point(36, 330)
+    $startBtn.Size = New-Object System.Drawing.Size(180, 48)
+    $startBtn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $startBtn.FlatAppearance.BorderColor = $border
+    $startBtn.BackColor = $accentSoft
+    $startBtn.ForeColor = $foreground
+    $startBtn.Font = New-UiFont 'Microsoft YaHei UI' 17 ([System.Drawing.FontStyle]::Bold)
+    $startBtn.Add_Click({
+        Save-OnboardingSeen
+        $overlay.Dispose()
+        Set-Status '新手引导已完成'
+    }.GetNewClosure())
+    $card.Controls.Add($startBtn)
+    Set-RoundedRegion $startBtn 12
+}
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $menu.Renderer = New-Object QuotaDockMenuRenderer
@@ -1970,6 +2177,31 @@ $refreshItem.Add_Click({ Sync-HostRuntimeState; Set-Status '运行状态已刷�
 [void]$menu.Items.Add($refreshItem)
 
 [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+
+$guideItem = New-Object System.Windows.Forms.ToolStripMenuItem('新手指南')
+$guideItem.Add_Click({ Open-QuotaDockDoc 'docs\deployment-guide.md' })
+[void]$menu.Items.Add($guideItem)
+
+$downloadItem = New-Object System.Windows.Forms.ToolStripMenuItem('下载页')
+$downloadItem.Add_Click({ Open-QuotaDockUrl ($quotaDockDocsRoot + '/releases/latest') })
+[void]$menu.Items.Add($downloadItem)
+
+$privacyItem = New-Object System.Windows.Forms.ToolStripMenuItem('隐私说明')
+$privacyItem.Add_Click({ Open-QuotaDockDoc 'docs\privacy.md' })
+[void]$menu.Items.Add($privacyItem)
+
+$githubItem = New-Object System.Windows.Forms.ToolStripMenuItem('GitHub')
+$githubItem.Add_Click({ Open-QuotaDockUrl $quotaDockDocsRoot })
+[void]$menu.Items.Add($githubItem)
+
+$versionItem = New-Object System.Windows.Forms.ToolStripMenuItem('当前版本')
+$versionItem.Add_Click({
+    $ver = Get-QuotaDockAppVersion
+    [void][System.Windows.Forms.MessageBox]::Show($form, ('QuotaDock ' + $ver), '当前版本', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+})
+[void]$menu.Items.Add($versionItem)
+
+[void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 $exitItem = New-Object System.Windows.Forms.ToolStripMenuItem('退出 QuotaDock')
 [void]$menu.Items.Add($exitItem)
 
@@ -2009,6 +2241,7 @@ $script:CenterReady = $true
 Sync-HostRuntimeState
 Save-State
 Show-Center
+Show-OnboardingOverlay
 Start-QuotaDockUpdateCheck
 
 $openTimer = New-Object System.Windows.Forms.Timer

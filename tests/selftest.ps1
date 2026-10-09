@@ -99,9 +99,27 @@ if ($centerSource -notmatch '\$script:UpdateResultConsumed' -or $centerSource -n
     throw 'REGRESSION_FAIL: update results must be consumed before showing a modal result'
 }
 if ($centerSource -notmatch 'Start-QuotaDockLocalUpdate' -or
-    $centerSource -notmatch 'install_quota_update\.ps1' -or
-    $centerSource -match 'Start-Process \$releaseUrl') {
-    throw 'REGRESSION_FAIL: update result must start the local verified installer, not open a release page'
+    $centerSource -notmatch 'install_quota_update\.ps1') {
+    throw 'REGRESSION_FAIL: update result must start the local verified installer'
+}
+if ($centerSource -notmatch 'Open-QuotaDockUrl' -or
+    $centerSource -notmatch '\$releaseUrl' -or
+    $centerSource -notmatch 'YesNoCancel') {
+    throw 'REGRESSION_FAIL: update result must offer opening release notes via releaseUrl'
+}
+if ($centerSource -notmatch 'AutoScroll' -or
+    $centerSource -notmatch 'onboarding_seen\.json' -or
+    $centerSource -notmatch 'Show-OnboardingOverlay') {
+    throw 'REGRESSION_FAIL: center must provide scrollable provider list and first-run onboarding'
+}
+if ($centerSource -notmatch '新手指南' -or
+    $centerSource -notmatch '隐私说明' -or
+    $centerSource -notmatch '当前版本') {
+    throw 'REGRESSION_FAIL: tray menu must expose help entries'
+}
+if ($centerSource -notmatch '手动 JSON' -or
+    $centerSource -notmatch '同步器说明') {
+    throw 'REGRESSION_FAIL: Claude/adapter empty-state CTA labels must be present'
 }
 if ($centerSource -match '\$nameLabel\.Add_Click' -or
     $centerSource -match '\$descriptionLabel\.Add_Click' -or
@@ -298,6 +316,19 @@ $buildUpdateSource = Get-Content -LiteralPath (Join-Path $root 'packaging\build_
 if ($buildUpdateSource -match 'raw\.githubusercontent\.com/.*/dist/' -or
     $buildUpdateSource -notmatch 'releases/download') {
     throw 'REGRESSION_FAIL: update packages must be downloaded from versioned GitHub Release assets'
+}
+if ($installerSource -notmatch 'adapters' -or
+    $buildUpdateSource -notmatch "'adapters'" -or
+    $installerSource -notmatch 'privacy\.md' -or
+    $buildUpdateSource -notmatch 'privacy\.md') {
+    throw 'REGRESSION_FAIL: installer and update ZIP must ship adapters/ and offline privacy docs'
+}
+if (-not (Test-Path -LiteralPath (Join-Path $root 'docs\privacy.md'))) {
+    throw 'REGRESSION_FAIL: docs/privacy.md must exist'
+}
+if ($hostSource -notmatch 'Open-AdapterDocs' -or
+    $hostSource -notmatch '手动 JSON') {
+    throw 'REGRESSION_FAIL: floater empty-state must link adapter docs and label Claude as manual JSON'
 }
 $distPath = Join-Path $root 'dist'
 if (Test-Path -LiteralPath $distPath) {

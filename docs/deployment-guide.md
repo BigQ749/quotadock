@@ -92,6 +92,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\configure_opencode_go_background
 
 页面保持打开时扩展每 60 秒同步一次；关闭页面后浮窗保留最后一次结果，并会标记为过期。这个模式的优点是不保存任何 Cookie，缺点是不能关浏览器。
 
+## 5.1 Grok Bot / Muse / Claude
+
+这三个平台自 v0.2.4 起为**内置目录**，管理中心可直接勾选：
+
+| 平台 | 默认 JSON | 同步方式 | Python 依赖 |
+|---|---|---|---|
+| Grok Bot | `%LOCALAPPDATA%\QuotaDock\custom-data\grokbot.json` | 可选 `adapters/grokbot/monitor.py` | 见该目录 README（通常需本机已登录的相关环境） |
+| Muse | `%LOCALAPPDATA%\QuotaDock\custom-data\muse.json` | 可选 `adapters/muse/monitor.py`（DPAPI Cookie） | 见该目录 README |
+| Claude | `%LOCALAPPDATA%\QuotaDock\custom-data\claude.json` | **手动 JSON / 预览**（官方同步脚本待接入） | 无 |
+
+安装包 v0.2.5+ 已包含 `adapters/` 与 `docs/providers-grokbot-muse-claude.md`。浮窗在等待同步时会提示打开适配器说明；不要向仓库提交 Cookie 或真实额度快照。
+
 ## 6. 验证部署是否成功
 
 看日志比看界面更可靠：

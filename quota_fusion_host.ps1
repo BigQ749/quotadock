@@ -721,9 +721,22 @@ function Get-WindowsProviderModel {
     }
     $syncStatus = [string](Get-JsonValue $Data 'syncStatus')
     $lastError = [string](Get-JsonValue $Data 'lastError')
+    $cta = $null
+    $waiting = ($status -eq '等待同步' -or $status -eq '等待首次同步')
+    if ($waiting -and $Provider -eq 'claude') {
+        $badge = '手动 JSON / 预览'
+        $status = '等待手动写入 JSON · 点此查看说明'
+        $cta = 'OpenAdapterDocs'
+    }
+    elseif ($waiting -and (@('grokbot', 'muse') -contains $Provider)) {
+        $badge = '待接同步器'
+        $status = '等待同步 · 点此查看适配器说明'
+        $cta = 'OpenAdapterDocs'
+    }
     if ($syncStatus -eq 'error' -and -not [string]::IsNullOrWhiteSpace($lastError)) {
         $status = '同步失败 · ' + $lastError
         $badge = '过期'
+        $cta = $null
     }
     return [pscustomobject]@{
         Title  = if ([string]::IsNullOrWhiteSpace([string](Get-JsonValue $Data 'title'))) { $Profile.Title } else { [string](Get-JsonValue $Data 'title') }
@@ -731,19 +744,55 @@ function Get-WindowsProviderModel {
         Status = $status
         Rows   = @($rows.ToArray())
         Error  = ($rows.Count -eq 0)
+        Cta    = $cta
     }
+}
+
+function Get-AdapterDocsPath {
+    param([string]$Provider)
+    switch ($Provider) {
+        'grokbot' { return 'adapters\grokbot\README.md' }
+        'muse' { return 'adapters\muse\README.md' }
+        'claude' { return 'docs\providers-grokbot-muse-claude.md' }
+        default { return 'docs\provider-adapter.md' }
+    }
+}
+
+function Open-AdapterDocs {
+    param([string]$Provider)
+    $relative = Get-AdapterDocsPath $Provider
+    $local = Join-Path $baseDir $relative
+    if (Test-Path -LiteralPath $local -PathType Leaf) {
+        try { Start-Process $local | Out-Null; return } catch {}
+    }
+    $url = 'https://github.com/BigQ749/quotadock/blob/main/' + ($relative -replace '\\', '/')
+    try { Start-Process $url | Out-Null } catch {}
 }
 
 function Get-UiModel {
     param([string]$Provider)
     $data = Read-QuotaData (Get-ActiveQuotaDataPath $Provider)
     if ($null -eq $data) {
+        $badge = '等待数据'
+        $status = '等待首次同步'
+        $cta = $null
+        if ($Provider -eq 'claude') {
+            $badge = '手动 JSON / 预览'
+            $status = '等待手动写入 JSON · 点此查看说明'
+            $cta = 'OpenAdapterDocs'
+        }
+        elseif (@('grokbot', 'muse') -contains $Provider) {
+            $badge = '待接同步器'
+            $status = '等待同步 · 点此查看适配器说明'
+            $cta = 'OpenAdapterDocs'
+        }
         return [pscustomobject]@{
             Title  = $script:Profiles[$Provider].Title
-            Badge  = '等待数据'
-            Status = '等待首次同步'
+            Badge  = $badge
+            Status = $status
             Rows   = @()
             Error  = $true
+            Cta    = $cta
         }
     }
 
@@ -1287,7 +1336,8 @@ function Draw-Card {
     }
 
     $status = Get-SafeText $model.Status 32
-    Draw-Text $Graphics $status ($X + 16) $statusY ($W - 32) 32 $fontMeta $statusColor
+    $ctaColor = if (-not [string]::IsNullOrWhiteSpace([string]$model.Cta)) { [System.Drawing.Color]::FromArgb(112, 191, 255) } else { $statusColor }
+    Draw-Text $Graphics $status ($X + 16) $statusY ($W - 32) 32 $fontMeta $ctaColor
 
     $fontTitle.Dispose()
     $fontBody.Dispose()
@@ -1585,6 +1635,11 @@ function Get-HitAction {
             if ($X -ge ($W - 42)) { return 'CloseWindow' }
             if ($X -ge ($W - 82)) { return 'MinimizeWindow' }
         }
+        $card0 = $cards[0]
+        if ($null -ne $card0.Model -and -not [string]::IsNullOrWhiteSpace([string]$card0.Model.Cta) -and
+            $Y -ge ($Form.ClientSize.Height - 50)) {
+            return 'OpenAdapterDocs'
+        }
         return 'Drag'
     }
 
@@ -1598,6 +1653,11 @@ function Get-HitAction {
         if ($X -ge $region.X -and $X -le ($region.X + $region.W) -and $Y -ge $region.Y -and $Y -le ($region.Y + $region.H)) {
             if ($Y -ge ($region.Y + 8) -and $Y -le ($region.Y + 48)) {
                 if ($X -ge ($region.X + $region.W - 42) -and $X -le ($region.X + $region.W - 6)) { return 'CloseCard' }
+            }
+            $hitModel = $region.Card.Model
+            if ($null -ne $hitModel -and -not [string]::IsNullOrWhiteSpace([string]$hitModel.Cta) -and
+                $Y -ge ($region.Y + $region.H - 50)) {
+                return 'OpenAdapterDocs'
             }
             break
         }
@@ -2403,6 +2463,17 @@ function New-FloatWindow {
             }
             'Expand' {
                 Toggle-Minimize $sender
+                return
+            }
+            'OpenAdapterDocs' {
+                $card = Get-HitCard $sender $x $y
+                if ($null -eq $card) {
+                    $cards = @($script:FormCards[$sender])
+                    if ($cards.Count -gt 0) { $card = $cards[0] }
+                }
+                if ($null -ne $card) {
+                    Open-AdapterDocs $card.Provider
+                }
                 return
             }
         }
